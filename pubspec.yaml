@@ -48,9 +48,25 @@ dependencies:
   # https://pub.dev/packages/google_fonts/install
   google_fonts: ^1.1.0
   # https://pub.dev/packages/cryptography
-  kms: ^0.4.0
-  kms_flutter: ^0.1.0
 
+  kms_flutter:
+    git:
+      url: https://github.com/dint-dev/cryptography.git
+      path: kms_flutter
+      ref: master
+  http: ^0.12.2
+
+dependency_overrides:
+  kms:
+    git:
+      url: https://github.com/dint-dev/cryptography.git
+      path: kms
+      ref: master
+  cryptography:
+    git:
+      url: https://github.com/dint-dev/cryptography.git
+      path: cryptography
+      ref: master
 
 dev_dependencies:
   flutter_test:

@@ -5,10 +5,7 @@ import 'dart:convert';
 import 'package:geolocator/geolocator.dart';
 import 'package:kms/kms.dart';
 import 'package:kms_flutter/kms_flutter.dart';
-
-// import 'dart:convert';
-// import 'package:cryptography/cryptography.dart';
-// import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:http/http.dart' as http;
 
 class Tracker {
   Tracker(this.messenger);
@@ -17,28 +14,61 @@ class Tracker {
 
   // find matching keys
   Future<KeyDocument> _getKeyDoc() async {
-    KeyDocument document;
+    KeyDocument keyPairDocument;
 
     await kms.documentsAsStream().forEach((doc) {
-      if (document == null &&
+      if (keyPairDocument == null &&
           doc.collection.collectionId == 'TrackTok' &&
-          doc.documentId == 'Ed25519') {
-        document = doc;
+          doc.documentId == '25519Sig') {
+        keyPairDocument = doc;
+        print("Found ${keyPairDocument}");
       }
     });
-    if (document == null) {
-      document = await kms.collection('TrackTok').createKeyPair(
-            documentId: 'Ed25519',
+    if (keyPairDocument == null) {
+      keyPairDocument = await kms.collection('TrackTok').createKeyPair(
+            documentId: '25519Sig',
             keyExchangeType: null, // We will not do key exchange.
             signatureType: SignatureType.ed25519,
+            keyDocumentSecurity: KeyDocumentSecurity.highest,
           );
+      print("Generated ${keyPairDocument}");
     }
-    return document;
+    return keyPairDocument;
   }
 
   void start() async {
-    KeyDocument document = await _getKeyDoc();
-    var pubKey = base64Encode((await document.getPublicKey()).bytes);
+    TTRegistration reg;
+    Map<String, dynamic> data = {
+      'remaining': "locating",
+    };
+    _getKeyDoc().then((keyPairDocument) async {
+      final pubKey = await keyPairDocument.getPublicKey();
+      final client = http.Client();
+      final nonce = Nonce.randomBytes(8);
+      final String payload = pubKey.toString() + nonce.toString();
+      final signature = await keyPairDocument.sign(payload.codeUnits);
+      try {
+        final uriResponse =
+            await client.post('https://o2h.ch/srv/REST/v1/register',
+                headers: <String, String>{
+                  'Content-Type': 'application/json; charset=UTF-8',
+                },
+                body: jsonEncode(<String, String>{
+                  'pubKey': base64Encode(pubKey.bytes),
+                  'nonce': base64Encode(nonce.bytes),
+                  'signature': base64Encode(signature.bytes),
+                }));
+        if (uriResponse.statusCode == 200) {
+          reg = TTRegistration.fromJson(json.decode(uriResponse.body));
+          data['tag'] = reg.tag;
+        } else {
+          print(uriResponse.body.toString());
+        }
+      } catch (event) {
+        print("ERROR:" + event);
+      }
+      client.close();
+    });
 
     // if (value == null) {}
     int locationCnt = 0;
@@ -46,9 +76,7 @@ class Tracker {
     StreamSubscription<int> pedometerStream;
     // StreamSubscription<LocationResult> geolocationSub;
     StreamSubscription<Position> positionStream;
-    Map<String, dynamic> data = {
-      "pubKey": pubKey.substring(0, 4) + '-' + pubKey.substring(4, 8)
-    };
+
     // Location locationPrev;
     Position positionPrev;
     int stepStart;
@@ -105,7 +133,6 @@ class Tracker {
         positionStream.cancel();
       }
     });
-    data['remaining'] = "locating";
 
     /* initial send */
     data['stepCount'] = 0;
@@ -123,5 +150,52 @@ class Tracker {
       messenger.send(data);
       await Future.delayed(Duration(seconds: 1));
     }
+  }
+}
+
+class TTRegistration {
+  final String tag;
+  final List<TTEvent> events;
+
+  TTRegistration({this.tag, this.events});
+
+  factory TTRegistration.fromJson(Map<String, dynamic> json) {
+    List events = json['events'];
+
+    return TTRegistration(
+      tag: json['tag'],
+      events: events.map((i) => TTEvent.fromJson(i)).toList(),
+    );
+  }
+}
+
+class TTEvent {
+  final int id;
+  final DateTime startOfficial;
+  final DateTime startFirst;
+  final DateTime startLast;
+  final DateTime duration;
+  final String name;
+  final List<String> parts;
+  TTEvent({
+    this.id,
+    this.duration,
+    this.startOfficial,
+    this.startFirst,
+    this.startLast,
+    this.name,
+    this.parts,
+  });
+  factory TTEvent.fromJson(Map<String, dynamic> json) {
+    return TTEvent(
+      id: json['id'],
+      startOfficial:
+          DateTime.fromMillisecondsSinceEpoch(json['start_official_ts']),
+      startFirst: DateTime.fromMillisecondsSinceEpoch(json['start_first_ts']),
+      startLast: DateTime.fromMillisecondsSinceEpoch(json['start_last_ts']),
+      duration: DateTime.fromMillisecondsSinceEpoch(json['duration_s']),
+      name: json['name'],
+      parts: json['parts'],
+    );
   }
 }

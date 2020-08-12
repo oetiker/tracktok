@@ -113,6 +113,7 @@ class _MyAppState extends State<MyApp> {
                       title: "Accuracy", value: _bePrint("%.0fm", 'accuracy')),
                   PropCard(
                       title: "Heading", value: _bePrint("%.0f°", 'heading')),
+                  PropCard(title: "Tag", value: _bePrint("%s", 'tag')),
                 ]));
           }),
         ),
@@ -135,7 +136,7 @@ class _MyAppState extends State<MyApp> {
             actions: <Widget>[
               FlatButton(
                 onPressed: () async {
-                  bool opened = await LocationPermissions().openAppSettings();
+                  await LocationPermissions().openAppSettings();
                   Navigator.of(context, rootNavigator: true).pop(
                       false); // dismisses only the dialog and returns false
                 },
