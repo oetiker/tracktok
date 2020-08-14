@@ -12,6 +12,7 @@ import 'package:auto_size_text/auto_size_text.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:location_permissions/location_permissions.dart';
 import 'tracker.dart';
+import 'uplink.dart';
 
 void main() {
   // LicenseRegistry.addLicense(() async* {
@@ -37,13 +38,20 @@ class MyApp extends StatefulWidget {
 class _MyAppState extends State<MyApp> {
   final isolates = IsolateHandler();
 
-  Map<String, dynamic> data;
+  Map<String, dynamic> data = {};
   bool isRunning = false;
+  bool isReady = false;
   int locationCnt = 0;
+  final upLink = UpLink();
 
   @override
   void initState() {
     super.initState();
+    upLink.tag.then((tag) {
+      setState(() {
+        data['tag'] = tag;
+      });
+    });
   }
 
   @override

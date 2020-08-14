@@ -40,7 +40,8 @@ app.*.symbols
 app.*.map.json
 
 # publication keys
-android/key.properties
+key.properties
 
 # Exceptions to above rules.
 !/packages/flutter_tools/test/data/dart_dependencies_test/**/.packages
+upload_certificate.pem

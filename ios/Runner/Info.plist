@@ -29,15 +29,15 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>TrackTok tracks your location</string>
+	<string>TrackTok uses your location to calculate the distance you have run. It would like todo that even when the app is in the background.</string>
 	<key>NSLocationAlwaysUsageDescription</key>
-	<string>TrackTok tracks your location</string>
+	<string>TrackTok uses your location to calculate the distance you have run. It would like todo that even when the app is in the background.</string>
 	<key>NSLocationUsageDescription</key>
-	<string>TrackTok tracks your location</string>
+	<string>TrackTok uses your location to calculate the distance you have run.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>TrackTok tracks your location</string>
+	<string>TrackTok uses your location to calculate the distance you have run.</string>
 	<key>NSMotionUsageDescription</key>
-	<string>TrackTok counts your steps</string>
+	<string>TrackTok would like to count your steps to report them alongside the distance you have run.</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>fetch</string>

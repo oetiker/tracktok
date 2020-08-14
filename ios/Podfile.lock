@@ -2,11 +2,6 @@ PODS:
   - Flutter (1.0.0)
   - flutter_isolate (0.0.1):
     - Flutter
-  - flutter_secure_storage (3.3.1):
-    - Flutter
-  - FMDB (2.7.5):
-    - FMDB/standard (= 2.7.5)
-  - FMDB/standard (2.7.5)
   - "geolocator (5.3.2+2)":
     - Flutter
   - "location_permissions (3.0.0+1)":
@@ -17,32 +12,21 @@ PODS:
     - Flutter
   - pedometer (0.0.1):
     - Flutter
-  - sqflite (0.0.1):
-    - Flutter
-    - FMDB (~> 2.7.2)
 
 DEPENDENCIES:
   - Flutter (from `Flutter`)
   - flutter_isolate (from `.symlinks/plugins/flutter_isolate/ios`)
-  - flutter_secure_storage (from `.symlinks/plugins/flutter_secure_storage/ios`)
   - geolocator (from `.symlinks/plugins/geolocator/ios`)
   - location_permissions (from `.symlinks/plugins/location_permissions/ios`)
   - move_to_background (from `.symlinks/plugins/move_to_background/ios`)
   - path_provider (from `.symlinks/plugins/path_provider/ios`)
   - pedometer (from `.symlinks/plugins/pedometer/ios`)
-  - sqflite (from `.symlinks/plugins/sqflite/ios`)
-
-SPEC REPOS:
-  trunk:
-    - FMDB
 
 EXTERNAL SOURCES:
   Flutter:
     :path: Flutter
   flutter_isolate:
     :path: ".symlinks/plugins/flutter_isolate/ios"
-  flutter_secure_storage:
-    :path: ".symlinks/plugins/flutter_secure_storage/ios"
   geolocator:
     :path: ".symlinks/plugins/geolocator/ios"
   location_permissions:
@@ -53,20 +37,15 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/path_provider/ios"
   pedometer:
     :path: ".symlinks/plugins/pedometer/ios"
-  sqflite:
-    :path: ".symlinks/plugins/sqflite/ios"
 
 SPEC CHECKSUMS:
   Flutter: 0e3d915762c693b495b44d77113d4970485de6ec
   flutter_isolate: 0edf5081826d071adf21759d1eb10ff5c24503b5
-  flutter_secure_storage: 7953c38a04c3fdbb00571bcd87d8e3b5ceb9daec
-  FMDB: 2ce00b547f966261cd18927a3ddb07cb6f3db82a
   geolocator: f7622e0e7e2a24718285b73916d60c4a54b9f5b6
   location_permissions: 7e0f9aa0f60deb8ff93ddf0e2a164c7e8197bc94
   move_to_background: 39a5b79b26d577b0372cbe8a8c55e7aa9fcd3a2d
   path_provider: abfe2b5c733d04e238b0d8691db0cfd63a27a93c
   pedometer: e27471953eabc0ceed97e4828c0bccf91d179d86
-  sqflite: 4001a31ff81d210346b500c55b17f4d6c7589dd0
 
 PODFILE CHECKSUM: aafe91acc616949ddb318b77800a7f51bffa2a4c
 
