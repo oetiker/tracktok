@@ -11,14 +11,18 @@ import 'package:sembast/sembast_io.dart';
 class UpLink {
   UpLink();
 
+  TTRegistration _registration;
   KeyPair _keyPair;
-  String _tag;
 
-  Future<Database> db() async {
-    final dbdir = Platform.isIOS
+  Future<String> dbPath() async {
+    final dir = Platform.isIOS
         ? await getLibraryDirectory()
         : await getApplicationSupportDirectory();
-    return databaseFactoryIo.openDatabase(p.join(dbdir.path, 'tracktok.json'));
+    return p.join(dir.path, 'tracktok.db');
+  }
+
+  Future<Database> db() async {
+    return databaseFactoryIo.openDatabase(await dbPath());
   }
 
   Future<KeyPair> get keyPair async {
@@ -50,23 +54,11 @@ class UpLink {
     return _keyPair;
   }
 
-  Future<String> get tag async {
-    // find matching keys
-    if (_tag != null) {
-      print("return tag from memory");
-      return _tag;
-    }
-    var registry = StoreRef<String, String>.main();
-    var rec = registry.record('tag');
-    var dbh = await db();
-    _tag = await rec.get(dbh);
-    dbh.close();
-    if (_tag != null) {
-      print("loaded tag from db");
-      return _tag;
-    }
+  Future<TTRegistration> get register async {
+    // try calling the server to get the latest
+    // registration data from the server
+    // if this fails fall back to the cache if we have one
     final keyPair = await this.keyPair;
-
     final pubKey = keyPair.publicKey;
     final client = http.Client();
     final nonce = Nonce.randomBytes(8);
@@ -75,6 +67,7 @@ class UpLink {
       payload,
       keyPair,
     );
+    var registry = StoreRef<String, String>.main();
     try {
       final uriResponse =
           await client.post('https://o2h.ch/srv/REST/v1/register',
@@ -87,13 +80,15 @@ class UpLink {
                 'signature': base64Encode(signature.bytes),
               }));
       if (uriResponse.statusCode == 200) {
-        print("registered with backend");
-        var reg = TTRegistration.fromJson(json.decode(uriResponse.body));
-        var dbh = await db();
-        rec.put(dbh, reg.tag);
+        var regString = uriResponse.body;
+        var reg = TTRegistration.fromJson(json.decode(regString));
+        print("registered with backend: $regString");
+        var rec = registry.record('registration');
+        final dbh = await db();
+        rec.put(dbh, regString);
         dbh.close();
         print("store tag in db");
-        _tag = reg.tag;
+        _registration = reg;
       } else {
         print(uriResponse.body.toString());
       }
@@ -101,7 +96,16 @@ class UpLink {
       print("ERROR:" + err.toString());
     }
     client.close();
-    return _tag;
+    if (_registration == null) {
+      var rec = registry.record('registration');
+      var dbh = await db();
+      var regString = await rec.get(dbh);
+      if (regString != null) {
+        print("falling back to loading from cache: $regString");
+        _registration = TTRegistration.fromJson(json.decode(regString));
+      }
+    }
+    return _registration;
   }
 }
 
@@ -114,10 +118,12 @@ class TTRegistration {
   factory TTRegistration.fromJson(Map<String, dynamic> json) {
     List events = json['events'];
 
-    return TTRegistration(
+    var registration = TTRegistration(
       tag: json['tag'],
-      events: events.map((i) => TTEvent.fromJson(i)).toList(),
+      events: events.map((i) => TTEvent.fromJson(i)).toList(growable: true),
     );
+    registration.events.add(TTEvent(id: 0, name: 'Test Run', parts: []));
+    return registration;
   }
 }
 
@@ -126,7 +132,7 @@ class TTEvent {
   final DateTime startOfficial;
   final DateTime startFirst;
   final DateTime startLast;
-  final DateTime duration;
+  final Duration duration;
   final String name;
   final List<String> parts;
   TTEvent({
@@ -142,12 +148,14 @@ class TTEvent {
     return TTEvent(
       id: json['id'],
       startOfficial:
-          DateTime.fromMillisecondsSinceEpoch(json['start_official_ts']),
-      startFirst: DateTime.fromMillisecondsSinceEpoch(json['start_first_ts']),
-      startLast: DateTime.fromMillisecondsSinceEpoch(json['start_last_ts']),
-      duration: DateTime.fromMillisecondsSinceEpoch(json['duration_s']),
+          DateTime.fromMillisecondsSinceEpoch(json['start_official_ts'] * 1000),
+      startFirst:
+          DateTime.fromMillisecondsSinceEpoch(json['start_first_ts'] * 1000),
+      startLast:
+          DateTime.fromMillisecondsSinceEpoch(json['start_last_ts'] * 1000),
+      duration: Duration(seconds: json['duration_s']),
       name: json['name'],
-      parts: json['parts'],
+      parts: (json['parts'] as List).map((part) => part.toString()).toList(),
     );
   }
 }

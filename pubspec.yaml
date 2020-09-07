@@ -27,11 +27,11 @@ dependencies:
 
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
-  cupertino_icons: ^0.1.3
+  #cupertino_icons: ^0.1.3
   # https://pub.dev/packages/isolate_handler
   isolate_handler: ^0.3.1
   flutter_isolate: ^1.0.0+14
-  location_permissions: ^3.0.0+1
+  permission_handler: ^5.0.0+1
   # https://pub.dev/packages/geolocator
   geolocator: ^5.3.2+2
   # https://pub.dev/packages/pedometer
@@ -57,6 +57,9 @@ dependencies:
   sembast: ^2.4.7+6
   path: ^1.7.0
   path_provider: ^1.6.11
+  slider_button: ^0.5.0
+  # animations: ^1.1.2
+
 # dependency_overrides:
 #   kms:
 #     git:
@@ -78,6 +81,9 @@ dev_dependencies:
   # https://pub.dev/packages/flutter_launcher_icons
   # flutter pub run flutter_launcher_icons:main
   flutter_launcher_icons: ^0.7.5
+
+assets:
+  - google_fonts
 
 flutter_native_splash:
   image: assets/icon-fg.png

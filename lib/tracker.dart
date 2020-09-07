@@ -5,13 +5,16 @@ import 'uplink.dart';
 import 'package:geolocator/geolocator.dart';
 
 class Tracker {
-  Tracker(this.messenger);
+  Tracker(
+    this.messenger,
+    this.event,
+  );
+  final int event;
   final messenger;
   final upLink = UpLink();
   void start() async {
     Map<String, dynamic> data = {
       'remaining': "locating",
-      'tag': await upLink.tag,
     };
 
     // if (value == null) {}
