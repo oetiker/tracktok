@@ -4,7 +4,8 @@ import 'package:flutter/services.dart';
 import 'package:move_to_background/move_to_background.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import 'uplink.dart';
+import 'ttregistration.dart';
+import 'ttevent.dart';
 import 'tttag.dart';
 import 'tteventcard.dart';
 
@@ -35,18 +36,16 @@ class MyApp extends StatefulWidget {
 class _MyAppState extends State<MyApp> {
   bool isReady = false;
   int locationCnt = 0;
-  final upLink = UpLink();
+  final registration = TTRegistration();
   String tag;
   List<TTEvent> events;
 
   @override
   void initState() {
     super.initState();
-    upLink.register.then((registration) {
-      if (registration != null) {
-        tag = registration.tag;
-        events = registration.events;
-      }
+    registration.tag.then((newTag) async {
+      tag = newTag;
+      events = await registration.events;
       if (mounted) {
         setState(() {});
       }

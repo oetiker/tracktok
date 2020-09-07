@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'dart:ui';
-import 'dart:io' show Platform;
 import 'package:auto_size_text/auto_size_text.dart';
 import 'package:tracktok/tttrackingscreen.dart';
-import 'uplink.dart';
+import 'ttevent.dart';
 import 'package:slider_button/slider_button.dart';
 import 'tteventinfo.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -58,9 +57,10 @@ class TTEventCard extends StatelessWidget {
     if (ps[Permission.locationAlways].isDenied) {
       problems.add(Text('permanent access your location'));
     }
-    if (ps[Permission.ignoreBatteryOptimizations].isDenied) {
-      problems.add(Text('be except from battery optimizations'));
-    }
+    // if (Platform.isAndroid &&
+    //     !ps[Permission.ignoreBatteryOptimizations].isGranted) {
+    //   problems.add(Text('be excempt from battery optimizations'));
+    // }
     if (ps[Permission.sensors].isDenied ||
         ps[Permission.activityRecognition].isDenied) {
       problems.add(Text('access the motion sensors to count steps'));

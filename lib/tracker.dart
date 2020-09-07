@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:pedometer/pedometer.dart';
 import 'dart:math';
-import 'uplink.dart';
+import 'ttupload.dart';
 import 'package:geolocator/geolocator.dart';
 
 class Tracker {
@@ -11,11 +11,15 @@ class Tracker {
   );
   final int event;
   final messenger;
-  final upLink = UpLink();
+  // final _uploadInterval = 1000 * 60 * 5;
+  final _uploadInterval = 1000 * 5;
   void start() async {
     Map<String, dynamic> data = {
       'remaining': "locating",
     };
+    double totalUp = 0.0;
+    double totalDown = 0.0;
+    TTUpload uploader;
 
     // if (value == null) {}
     int locationCnt = 0;
@@ -49,6 +53,7 @@ class Tracker {
         if (positionPrev == null) {
           positionPrev = position;
         }
+
         var distance = await Geolocator().distanceBetween(positionPrev.latitude,
             positionPrev.longitude, position.latitude, position.longitude);
         data['distance'] = (totalDistance + distance) / 1000;
@@ -69,30 +74,53 @@ class Tracker {
         }
         if (startTime == null) {
           startTime = position.timestamp.millisecondsSinceEpoch;
+          uploader = TTUpload(
+            event: event,
+            startTs: (startTime / 1000).floor(),
+          );
         }
         totalDistance += distance;
+        var assent = position.altitude - positionPrev.altitude;
+        if (assent > 0) {
+          totalUp += assent;
+        } else {
+          totalDown -= assent;
+        }
         positionPrev = position;
       }
     });
+    bool go = true;
     messenger.listen((msg) {
       if (msg is String && msg == "stop") {
         pedometerStream.cancel();
         positionStream.cancel();
+        go = false;
       }
     });
-
     /* initial send */
     data['stepCount'] = 0;
     data['distance'] = 0.0;
     data['cnt'] = 0;
     data['alt'] = 0.0;
-    while (true) {
+    int lastUpload;
+
+    while (go) {
       if (startTime != null) {
         int elapsed = DateTime.now().millisecondsSinceEpoch - startTime;
         data['remaining'] = DateTime.fromMillisecondsSinceEpoch(
           3600 * 2000 - elapsed,
           isUtc: true,
         );
+        if (lastUpload == null || elapsed - lastUpload > _uploadInterval) {
+          lastUpload = elapsed;
+          uploader.upload({
+            'distance_m': (data['distance'] * 1000).floor(),
+            'duration_s': (elapsed / 1000).floor(),
+            'up_m': totalUp.floor(),
+            'down_m': totalDown.floor(),
+            'steps': data['stepCount']
+          });
+        }
       }
       messenger.send(data);
       await Future.delayed(Duration(seconds: 1));

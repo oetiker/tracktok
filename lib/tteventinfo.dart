@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'uplink.dart';
+import 'ttevent.dart';
 
 class TTEventInfo extends StatelessWidget {
   TTEventInfo({

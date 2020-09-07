@@ -12,7 +12,7 @@ import 'package:auto_size_text/auto_size_text.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import 'tracker.dart';
-import 'uplink.dart';
+import 'ttevent.dart';
 
 class TTTrackingScreen extends StatefulWidget {
   const TTTrackingScreen({
