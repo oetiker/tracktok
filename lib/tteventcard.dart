@@ -55,7 +55,7 @@ class TTEventCard extends StatelessWidget {
     ].request();
     List<Widget> problems = List.empty(growable: true);
     if (ps[Permission.locationAlways].isDenied) {
-      problems.add(Text('permanent access your location'));
+      problems.add(Text('permanent access to the location service'));
     }
     // if (Platform.isAndroid &&
     //     !ps[Permission.ignoreBatteryOptimizations].isGranted) {

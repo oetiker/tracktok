@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import 'package:move_to_background/move_to_background.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:tracktok/ttuploader.dart';
 
 import 'ttregistration.dart';
 import 'ttevent.dart';
@@ -15,6 +16,7 @@ void main() {
   //    yield LicenseEntryWithLineBreaks(['google_fonts'], license);
   // });
   WidgetsFlutterBinding.ensureInitialized();
+  TTUploader().startSyncBack();
   return runApp(MaterialApp(
     home: MyApp(),
     title: 'TrackTok',
@@ -54,6 +56,7 @@ class _MyAppState extends State<MyApp> {
 
   @override
   Widget build(BuildContext context) {
+    // TTUploader().context = context;
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.portraitUp,
     ]);
@@ -71,7 +74,6 @@ class _MyAppState extends State<MyApp> {
           width: double.maxFinite,
           child: SafeArea(
             child: ListView(
-              shrinkWrap: true,
               children: [
                 for (var index = 0; index < eventCount; index++)
                   TTEventCard(event: events[index]),

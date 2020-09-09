@@ -7,12 +7,26 @@ import 'package:sembast/sembast_io.dart';
 
 class TTRegistry {
   TTRegistry();
-
-  Future<String> _dbPath([String fileName = 'tracktock']) async {
+  final registry = StoreRef<String, String>.main();
+  Future<String> _dbPath([String fileName = 'tracktok']) async {
     final dir = Platform.isIOS
         ? await getLibraryDirectory()
         : await getApplicationSupportDirectory();
-    return p.join(dir.path, fileName + '.db');
+
+    var basePath = p.join(dir.path, fileName);
+    var newPath = basePath + '.db';
+    var oldPath = basePath + '.json';
+    var oldFile = File(oldPath);
+    var newFile = File(newPath);
+    if (await oldFile.exists()) {
+      if (await newFile.exists()) {
+        print("Moving $newPath away.");
+        await newFile.rename(newPath + '-saved');
+      }
+      print("Moving $oldPath to $newPath.");
+      await oldFile.rename(newPath);
+    }
+    return newPath;
   }
 
   Future<Database> _db() async {
@@ -20,7 +34,6 @@ class TTRegistry {
   }
 
   Future<String> get(String key) async {
-    var registry = StoreRef<String, String>.main();
     var rec = registry.record(key);
     var dbh = await _db();
     var ret = await rec.get(dbh);
@@ -29,7 +42,6 @@ class TTRegistry {
   }
 
   Future<String> put(String key, String value) async {
-    var registry = StoreRef<String, String>.main();
     var rec = registry.record(key);
     var dbh = await _db();
     var ret = await rec.put(dbh, value);

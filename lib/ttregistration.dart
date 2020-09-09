@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'ttregistry.dart';
 import 'ttevent.dart';
+import 'ttglobal.dart';
 
 class TTRegistration {
   TTRegistration();
@@ -55,7 +56,11 @@ class TTRegistration {
     List events = data['events'];
     _tag = data['tag'];
     _events = events.map((i) => TTEvent.fromJson(i)).toList(growable: true);
-    _events.add(TTEvent(id: 0, name: 'Test Run', parts: []));
+    _events.add(TTEvent(
+        id: 0,
+        name: 'Test Run',
+        duration: TTGlobal.testRunDuration,
+        parts: []));
   }
 
   Future _registration() async {
@@ -74,7 +79,7 @@ class TTRegistration {
     TTRegistry registry = TTRegistry();
     try {
       final uriResponse =
-          await client.post('https://o2h.ch/srv/REST/v1/register',
+          await client.post(TTGlobal.server + '/REST/v1/register',
               headers: <String, String>{
                 'Content-Type': 'application/json; charset=UTF-8',
               },

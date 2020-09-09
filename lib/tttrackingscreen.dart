@@ -9,8 +9,7 @@ import 'package:sprintf/sprintf.dart';
 import 'package:intl/intl.dart';
 import 'package:isolate_handler/isolate_handler.dart';
 import 'package:auto_size_text/auto_size_text.dart';
-import 'package:google_fonts/google_fonts.dart';
-
+import 'ttuploader.dart';
 import 'tracker.dart';
 import 'ttevent.dart';
 
@@ -33,9 +32,8 @@ class _TrackingState extends State<TTTrackingScreen>
   Map<String, dynamic> data = {};
   bool isReady = false;
   bool trackerOn = false;
-  Timer refreshTimer;
+  // Timer refreshTimer;
   int locationCnt = 0;
-  static int eventId;
   //final upLink = UpLink();
 
   // @override
@@ -46,32 +44,26 @@ class _TrackingState extends State<TTTrackingScreen>
   @override
   void initState() {
     super.initState();
-    eventId = widget.event.id;
+    TTUploader().stopSyncBack();
     isolates.spawn<dynamic>(
       trackerStarter,
       name: 'tracker',
-      onReceive: trackerReceiver,
+      onReceive: (input) => trackerReceiver(context, input),
+      onInitialized: () => isolates.send(
+        {
+          'type': 'event',
+          'eventId': widget.event.id,
+          'eventDurationMs': widget.event.duration.inMilliseconds,
+        },
+        to: 'tracker',
+      ),
     );
     trackerOn = true;
-    // update the display every minute
-    refreshTimer = Timer.periodic(
-      Duration(minutes: 1),
-      (Timer timer) {
-        if (mounted) {
-          setState(() {});
-        }
-      },
-    );
     WidgetsBinding.instance.addObserver(this);
   }
 
   @override
   void dispose() {
-    stopTracker();
-    if (refreshTimer != null) {
-      refreshTimer.cancel();
-      refreshTimer = null;
-    }
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -91,81 +83,34 @@ class _TrackingState extends State<TTTrackingScreen>
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.portraitUp,
-    ]);
-    return WillPopScope(
-      onWillPop: () async {
-        return await onStop(context);
-      },
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('TrackTok'),
-        ),
-        floatingActionButton: FloatingActionButton(
-          materialTapTargetSize: MaterialTapTargetSize.padded,
-          onPressed: () async {
-            if (await onStop(context)) {
-              Navigator.pop(context);
-            }
-          },
-          backgroundColor: Theme.of(context).accentColor,
-          child: Icon(Icons.stop),
-        ),
-        body: Container(
-          width: double.maxFinite,
-          padding: const EdgeInsets.all(30),
-          child: SafeArea(
-            child: Column(children: <Widget>[
-              GridView.count(
-                  primary: false,
-                  shrinkWrap: true,
-                  padding: const EdgeInsets.all(0.0),
-                  crossAxisCount: 2,
-                  crossAxisSpacing: 10,
-                  mainAxisSpacing: 8,
-                  childAspectRatio: 2.3,
-                  children: <Widget>[
-                    PropCard(
-                        title: "Remaining",
-                        value: data == null
-                            ? ""
-                            : data['remaining'] is DateTime
-                                ? DateFormat.Hms().format(data['remaining'])
-                                : data['remaining']),
-                    PropCard(
-                        title: "Distance",
-                        value: _bePrint("%.2fkm", 'distance')),
-                    PropCard(
-                        title: "Steps", value: _bePrint("%d", 'stepCount')),
-                    PropCard(
-                        title: "Altitude", value: _bePrint("%.0fm", 'alt')),
-                    PropCard(
-                        title: "Measurements", value: _bePrint("%d", 'cnt')),
-                    PropCard(
-                        title: "Speed", value: _bePrint("%.1fm/s", 'speed')),
-                    PropCard(
-                        title: "Accuracy",
-                        value: _bePrint("%.0fm", 'accuracy')),
-                    PropCard(
-                        title: "Heading", value: _bePrint("%.0f°", 'heading')),
-                  ]),
-            ]),
-          ),
-        ),
-      ),
-    );
+  void stopTracker() {
+    if (trackerOn == true) {
+      isolates.send({'type': 'stop'}, to: 'tracker');
+    }
+    return;
   }
 
-  void stopTracker() {
-    if (trackerOn) {
-      isolates.send('stop', to: 'tracker');
-      isolates.kill('tracker');
+  void trackerReceiver(
+    BuildContext context,
+    dynamic status,
+  ) {
+    if (status is Map && status['state'] is String) {
+      switch (status['state']) {
+        case 'done':
+          trackerOn = false;
+          setState(() {});
+          isolates.kill('tracker');
+          TTUploader().startSyncBack();
+          break;
+        case 'running':
+          setState(() {
+            data = status;
+          });
+          break;
+        case 'locating':
+          break;
+      }
     }
-    trackerOn = false;
-    return;
   }
 
   Future<bool> onStop(BuildContext context) async {
@@ -209,7 +154,6 @@ class _TrackingState extends State<TTTrackingScreen>
                     onChanged: (String input) {
                       setState(() {
                         active = input.toUpperCase() == 'STOP';
-                        print(active.toString());
                       });
                     },
                   ),
@@ -245,15 +189,9 @@ class _TrackingState extends State<TTTrackingScreen>
     return result;
   }
 
-  void trackerReceiver(dynamic status) {
-    setState(() {
-      data = status;
-    });
-  }
-
   static void trackerStarter(Map<String, dynamic> context) {
     final messenger = HandledIsolate.initialize(context);
-    final tracker = Tracker(messenger, eventId);
+    final tracker = Tracker(messenger);
     tracker.start();
   }
 
@@ -262,6 +200,114 @@ class _TrackingState extends State<TTTrackingScreen>
       return "";
     }
     return sprintf(format, [data[key]]);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+    ]);
+    return WillPopScope(
+      onWillPop: () async {
+        if (trackerOn == true) {
+          await onStop(context);
+          return false;
+        }
+        if (trackerOn == false) {
+          return true;
+        }
+        return true;
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('TrackTok'),
+        ),
+        floatingActionButton: FloatingActionButton.extended(
+          materialTapTargetSize: MaterialTapTargetSize.padded,
+          onPressed: trackerOn == null
+              ? null
+              : () async {
+                  if (trackerOn == true) {
+                    await onStop(context);
+                    return;
+                  }
+                  Navigator.pop(context);
+                  return;
+                },
+          backgroundColor: trackerOn == true
+              ? Theme.of(context).accentColor
+              : Theme.of(context).primaryColor,
+          label: Text(trackerOn == true ? 'Stop Tracking' : 'Close Tracker'),
+        ),
+        body: Container(
+          width: double.maxFinite,
+          padding: const EdgeInsets.all(30),
+          child: SafeArea(
+            child: Column(
+              children: <Widget>[
+                GridView.count(
+                    primary: false,
+                    shrinkWrap: true,
+                    padding: const EdgeInsets.all(0.0),
+                    crossAxisCount: 2,
+                    crossAxisSpacing: 10,
+                    mainAxisSpacing: 8,
+                    childAspectRatio: 2.3,
+                    children: <Widget>[
+                      PropCard(
+                          title: "Remaining",
+                          value: data == null
+                              ? ""
+                              : data['remaining'] is DateTime
+                                  ? DateFormat.Hms().format(data['remaining'])
+                                  : data['remaining']),
+                      PropCard(
+                          title: "Distance",
+                          value: _bePrint("%.2fkm", 'distance')),
+                      PropCard(
+                          title: "Steps", value: _bePrint("%d", 'stepCount')),
+                      PropCard(
+                          title: "Altitude", value: _bePrint("%.0fm", 'alt')),
+                      PropCard(
+                          title: "Measurements", value: _bePrint("%d", 'cnt')),
+                      PropCard(
+                          title: "Speed", value: _bePrint("%.1fm/s", 'speed')),
+                      PropCard(
+                          title: "Accuracy",
+                          value: _bePrint("%.0fm", 'accuracy')),
+                      PropCard(
+                          title: "Heading",
+                          value: _bePrint("%.0f°", 'heading')),
+                    ]),
+                if (trackerOn == false) ...[
+                  Expanded(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        AutoSizeText(
+                          'FINISH',
+                          stepGranularity: 2,
+                          maxFontSize: 84,
+                          maxLines: 2,
+                          style: TextStyle(
+                            color: Theme.of(context).accentColor,
+                            fontSize: 60,
+                            fontWeight: FontWeight.bold,
+                            fontFeatures: [
+                              FontFeature.tabularFigures(),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ]
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 
@@ -289,7 +335,7 @@ class PropCard extends StatelessWidget {
           child: AutoSizeText(
             '$title',
             group: titleGroup,
-            style: GoogleFonts.roboto(
+            style: TextStyle(
               fontSize: 30,
               fontFeatures: [
                 FontFeature.tabularFigures(),
@@ -308,7 +354,7 @@ class PropCard extends StatelessWidget {
             stepGranularity: 2,
             maxFontSize: value == null || value == "" ? 28 : 54,
             maxLines: 1,
-            style: GoogleFonts.roboto(
+            style: TextStyle(
               fontSize: 60,
               fontWeight: FontWeight.bold,
               fontFeatures: [

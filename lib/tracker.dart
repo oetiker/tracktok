@@ -1,25 +1,29 @@
 import 'dart:async';
 import 'package:pedometer/pedometer.dart';
 import 'dart:math';
-import 'ttupload.dart';
+import 'ttuploader.dart';
 import 'package:geolocator/geolocator.dart';
+import 'ttevent.dart';
+import 'ttglobal.dart';
 
 class Tracker {
   Tracker(
     this.messenger,
-    this.event,
   );
-  final int event;
+  TTEvent event = TTEvent(
+    id: 0,
+    duration: Duration(seconds: 10),
+  );
   final messenger;
-  // final _uploadInterval = 1000 * 60 * 5;
-  final _uploadInterval = 1000 * 5;
+  final uploader = TTUploader();
+
   void start() async {
     Map<String, dynamic> data = {
-      'remaining': "locating",
+      'status': 'locating',
     };
     double totalUp = 0.0;
     double totalDown = 0.0;
-    TTUpload uploader;
+    uploader.stopSyncBack();
 
     // if (value == null) {}
     int locationCnt = 0;
@@ -32,7 +36,7 @@ class Tracker {
     Position positionPrev;
     int stepStart;
     double totalDistance = 0;
-    int startTime;
+    DateTime startTime;
     pedometerStream = Pedometer().pedometerStream.listen((
       int stepCount,
     ) {
@@ -56,6 +60,7 @@ class Tracker {
 
         var distance = await Geolocator().distanceBetween(positionPrev.latitude,
             positionPrev.longitude, position.latitude, position.longitude);
+        data['state'] = 'running';
         data['distance'] = (totalDistance + distance) / 1000;
         data['alt'] = position.altitude;
         data['accuracy'] = position.accuracy;
@@ -65,7 +70,7 @@ class Tracker {
         data['heading'] = position.heading;
         data['cnt'] = locationCnt++;
         if (max(positionPrev.accuracy, position.accuracy) > distance) {
-          // do not record the distance as it does
+          // do not record the position as it does
           // not make sense from a precision perspective
           if (startTime == null && positionPrev.accuracy > position.accuracy) {
             positionPrev = position;
@@ -73,11 +78,7 @@ class Tracker {
           return;
         }
         if (startTime == null) {
-          startTime = position.timestamp.millisecondsSinceEpoch;
-          uploader = TTUpload(
-            event: event,
-            startTs: (startTime / 1000).floor(),
-          );
+          startTime = DateTime.now();
         }
         totalDistance += distance;
         var assent = position.altitude - positionPrev.altitude;
@@ -89,12 +90,23 @@ class Tracker {
         positionPrev = position;
       }
     });
+
     bool go = true;
     messenger.listen((msg) {
-      if (msg is String && msg == "stop") {
-        pedometerStream.cancel();
-        positionStream.cancel();
-        go = false;
+      if (msg is Map) {
+        switch (msg['type']) {
+          case 'stop':
+            go = false;
+            break;
+          case 'event':
+            event = TTEvent(
+              duration: Duration(
+                milliseconds: msg['eventDurationMs'],
+              ),
+              id: msg['eventId'],
+            );
+            break;
+        }
       }
     });
     /* initial send */
@@ -102,20 +114,48 @@ class Tracker {
     data['distance'] = 0.0;
     data['cnt'] = 0;
     data['alt'] = 0.0;
-    int lastUpload;
-
-    while (go) {
+    data['elapsed'] = 0;
+    int lastUpload = 0;
+    int elapsed = 0;
+    int remaining = 1;
+    while (true) {
+      var remaining = 1;
       if (startTime != null) {
-        int elapsed = DateTime.now().millisecondsSinceEpoch - startTime;
-        data['remaining'] = DateTime.fromMillisecondsSinceEpoch(
-          3600 * 2000 - elapsed,
+        elapsed = DateTime.now().millisecondsSinceEpoch -
+            startTime.millisecondsSinceEpoch;
+        data['elapsed'] = DateTime.fromMillisecondsSinceEpoch(
+          elapsed,
           isUtc: true,
         );
-        if (lastUpload == null || elapsed - lastUpload > _uploadInterval) {
+        data['remaining'] = DateTime.fromMillisecondsSinceEpoch(
+          event.duration.inMilliseconds - elapsed,
+          isUtc: true,
+        );
+        remaining = data['remaining'].millisecondsSinceEpoch;
+        if (!go ||
+            elapsed - lastUpload > TTGlobal.uploadInterval.inMilliseconds) {
           lastUpload = elapsed;
-          uploader.upload({
+          var track = <String, int>{
             'distance_m': (data['distance'] * 1000).floor(),
             'duration_s': (elapsed / 1000).floor(),
+            'up_m': totalUp.floor(),
+            'down_m': totalDown.floor(),
+            'steps': data['stepCount']
+          };
+          if (go) {
+            uploader.push(event, startTime, track);
+          } else {
+            await uploader.push(event, startTime, track);
+          }
+        }
+        if (remaining <= 0) {
+          await uploader.push(event, startTime, {
+            'distance_m': (data['distance'] *
+                    1000.0 /
+                    elapsed *
+                    event.duration.inMilliseconds)
+                .floor(),
+            'duration_s': event.duration.inSeconds,
             'up_m': totalUp.floor(),
             'down_m': totalDown.floor(),
             'steps': data['stepCount']
@@ -123,7 +163,14 @@ class Tracker {
         }
       }
       messenger.send(data);
+      if (!go || remaining <= 0) {
+        break;
+      }
       await Future.delayed(Duration(seconds: 1));
     }
+    // final upload
+    pedometerStream.cancel();
+    positionStream.cancel();
+    messenger.send({'state': 'done'});
   }
 }

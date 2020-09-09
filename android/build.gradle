@@ -11,6 +11,8 @@ buildscript {
     }
 }
 
+// android.defaultConfig.ndk.debugSymbolLevel = 'FULL'
+
 allprojects {
     repositories {
         google()
