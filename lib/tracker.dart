@@ -65,8 +65,10 @@ class Tracker {
         data['alt'] = position.altitude;
         data['accuracy'] = position.accuracy;
         data['speed'] = position.speed;
-        data['ts'] = position.timestamp;
-
+        var sm = 1.0 / position.speed / 60.0 * 1000.0;
+        var smm = sm.floor();
+        var sms = ((sm - smm) * 60.0).floor();
+        data['tpk'] = "$smm'$sms" + '" km';
         data['heading'] = position.heading;
         data['cnt'] = locationCnt++;
         if (max(positionPrev.accuracy, position.accuracy) > distance) {
@@ -105,6 +107,10 @@ class Tracker {
               ),
               id: msg['eventId'],
             );
+            data['remaining'] = DateTime.fromMillisecondsSinceEpoch(
+              event.duration.inMilliseconds,
+              isUtc: true,
+            );
             break;
         }
       }
@@ -117,7 +123,6 @@ class Tracker {
     data['elapsed'] = 0;
     int lastUpload = 0;
     int elapsed = 0;
-    int remaining = 1;
     while (true) {
       var remaining = 1;
       if (startTime != null) {
@@ -145,6 +150,7 @@ class Tracker {
           if (go) {
             uploader.push(event, startTime, track);
           } else {
+            //track['stoped'] = 1;
             await uploader.push(event, startTime, track);
           }
         }
@@ -158,8 +164,14 @@ class Tracker {
             'duration_s': event.duration.inSeconds,
             'up_m': totalUp.floor(),
             'down_m': totalDown.floor(),
-            'steps': data['stepCount']
+            'steps': data['stepCount'],
+            //'complete': 1,
           });
+          // don't have anything confusing on the display
+          data['remaining'] = DateTime.fromMillisecondsSinceEpoch(
+            0,
+            isUtc: true,
+          );
         }
       }
       messenger.send(data);

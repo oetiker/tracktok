@@ -125,6 +125,7 @@ class TTEventCard extends StatelessWidget {
 
   Widget build(BuildContext context) {
     var theme = Theme.of(context);
+    int now = DateTime.now().millisecondsSinceEpoch;
     return Card(
       clipBehavior: Clip.antiAlias,
       elevation: 10,
@@ -184,37 +185,41 @@ class TTEventCard extends StatelessWidget {
           ),
           Container(
             padding: EdgeInsets.only(left: 20, right: 20, top: 10, bottom: 10),
-            child: event.startFirst != null &&
-                    event.startFirst.millisecondsSinceEpoch >
-                        DateTime.now().millisecondsSinceEpoch
-                ? Column(
+            child: Column(
+              children: [
+                if (event.startFirst != null &&
+                    event.startLast.millisecondsSinceEpoch >= now) ...[
+                  Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
-                      FractionallySizedBox(
-                        alignment: Alignment.centerLeft,
-                        widthFactor: 0.15,
-                        child: AutoSizeText(
-                          'Start in',
-                          maxLines: 1,
-                          style: TextStyle(
-                            fontSize: 50,
-                            color: Colors.black54,
-                          ),
+                      Text(
+                        event.startFirst.millisecondsSinceEpoch > now
+                            ? 'Start in'
+                            : 'Start within the next',
+                        style: TextStyle(
+                          color: Colors.black54,
                         ),
                       ),
                       SizedBox(
                         height: 4,
                       ),
                       AutoSizeText(
-                        countDown(event.startFirst),
+                        countDown(event.startFirst.millisecondsSinceEpoch > now
+                            ? event.startFirst
+                            : event.startLast),
                         maxLines: 1,
                         style: TextStyle(
                           fontSize: 90,
                         ),
                       ),
                     ],
-                  )
-                : LayoutBuilder(
+                  ),
+                  SizedBox(height: 8),
+                ],
+                if (event.startFirst == null ||
+                    (event.startFirst.millisecondsSinceEpoch <= now &&
+                        event.startLast.millisecondsSinceEpoch >= now))
+                  LayoutBuilder(
                     builder:
                         (BuildContext context, BoxConstraints constraints) {
                       return SliderButton(
@@ -248,6 +253,8 @@ class TTEventCard extends StatelessWidget {
                       );
                     },
                   ),
+              ],
+            ),
           ),
         ],
       ),

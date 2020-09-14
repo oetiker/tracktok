@@ -26,7 +26,8 @@ class TTTrackingScreen extends StatefulWidget {
 }
 
 class _TrackingState extends State<TTTrackingScreen>
-    with WidgetsBindingObserver {
+// with WidgetsBindingObserver
+{
   final isolates = IsolateHandler();
 
   Map<String, dynamic> data = {};
@@ -59,29 +60,29 @@ class _TrackingState extends State<TTTrackingScreen>
       ),
     );
     trackerOn = true;
-    WidgetsBinding.instance.addObserver(this);
+    //WidgetsBinding.instance.addObserver(this);
   }
 
-  @override
-  void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    super.dispose();
-  }
+  // @override
+  // void dispose() {
+  //   //WidgetsBinding.instance.removeObserver(this);
+  //   super.dispose();
+  // }
 
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    print("APP_STATE: $state");
+  // @override
+  // void didChangeAppLifecycleState(AppLifecycleState state) {
+  //   print("APP_STATE: $state");
 
-    if (state == AppLifecycleState.resumed) {
-      // user returned to our app
-    } else if (state == AppLifecycleState.inactive) {
-      // app is inactive
-    } else if (state == AppLifecycleState.paused) {
-      // user quit our app temporally
-    } else if (state == AppLifecycleState.detached) {
-      // app detached
-    }
-  }
+  //   if (state == AppLifecycleState.resumed) {
+  //     // user returned to our app
+  //   } else if (state == AppLifecycleState.inactive) {
+  //     // app is inactive
+  //   } else if (state == AppLifecycleState.paused) {
+  //     // user quit our app temporally
+  //   } else if (state == AppLifecycleState.detached) {
+  //     // app detached
+  //   }
+  // }
 
   void stopTracker() {
     if (trackerOn == true) {
@@ -220,7 +221,7 @@ class _TrackingState extends State<TTTrackingScreen>
       },
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('TrackTok'),
+          title: Text(widget.event.name),
         ),
         floatingActionButton: FloatingActionButton.extended(
           materialTapTargetSize: MaterialTapTargetSize.padded,
@@ -263,18 +264,19 @@ class _TrackingState extends State<TTTrackingScreen>
                                   : data['remaining']),
                       PropCard(
                           title: "Distance",
-                          value: _bePrint("%.2fkm", 'distance')),
+                          value: _bePrint("%.2f km", 'distance')),
                       PropCard(
                           title: "Steps", value: _bePrint("%d", 'stepCount')),
                       PropCard(
-                          title: "Altitude", value: _bePrint("%.0fm", 'alt')),
+                          title: "Altitude", value: _bePrint("%.0f m", 'alt')),
                       PropCard(
                           title: "Measurements", value: _bePrint("%d", 'cnt')),
                       PropCard(
-                          title: "Speed", value: _bePrint("%.1fm/s", 'speed')),
+                          title: "Speed",
+                          value: data == null ? "" : data['tpk']),
                       PropCard(
                           title: "Accuracy",
-                          value: _bePrint("%.0fm", 'accuracy')),
+                          value: _bePrint("%.0f m", 'accuracy')),
                       PropCard(
                           title: "Heading",
                           value: _bePrint("%.0f°", 'heading')),

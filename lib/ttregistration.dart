@@ -43,6 +43,10 @@ class TTRegistration {
     return _tag;
   }
 
+  void flushEvents() {
+    _events = null;
+  }
+
   Future<List<TTEvent>> get events async {
     if (_events != null) {
       return _events;
@@ -56,6 +60,14 @@ class TTRegistration {
     List events = data['events'];
     _tag = data['tag'];
     _events = events.map((i) => TTEvent.fromJson(i)).toList(growable: true);
+    // _events.add(TTEvent(
+    //     id: 2,
+    //     name: 'Holy Moly TestRun',
+    //     duration: Duration(seconds: 5),
+    //     startFirst: DateTime.now().add(Duration(seconds: 7)),
+    //     startLast: DateTime.now().add(Duration(seconds: 15)),
+    //     startOfficial: DateTime.now().add(Duration(seconds: 10)),
+    //     parts: []));
     _events.add(TTEvent(
         id: 0,
         name: 'Test Run',

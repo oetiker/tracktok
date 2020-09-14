@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -35,7 +37,7 @@ class MyApp extends StatefulWidget {
   _MyAppState createState() => _MyAppState();
 }
 
-class _MyAppState extends State<MyApp> {
+class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   bool isReady = false;
   int locationCnt = 0;
   final registration = TTRegistration();
@@ -52,6 +54,38 @@ class _MyAppState extends State<MyApp> {
         setState(() {});
       }
     });
+    WidgetsBinding.instance.addObserver(this);
+    Timer.periodic(Duration(/* seconds: */ minutes: 1), (t) {
+      if (mounted) {
+        setState(() {});
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      registration.flushEvents();
+      registration.events.then((newEvents) async {
+        events = newEvents;
+        if (mounted) {
+          setState(() {});
+        }
+      });
+    }
+    //  else if (state == AppLifecycleState.inactive) {
+    //   // app is inactive
+    // } else if (state == AppLifecycleState.paused) {
+    //   // user quit our app temporally
+    // } else if (state == AppLifecycleState.detached) {
+    //   // app detached
+    // }
   }
 
   @override
@@ -61,6 +95,25 @@ class _MyAppState extends State<MyApp> {
       DeviceOrientation.portraitUp,
     ]);
     var eventCount = events == null ? 0 : events.length;
+    Map<int, bool> hide = {};
+    var hideTest = false;
+    int testId;
+    if (events != null) {
+      events.asMap().forEach((i, e) {
+        if (e.id == 0) {
+          testId = i;
+          return;
+        }
+        var now = DateTime.now().millisecondsSinceEpoch;
+        if (e.startFirst.subtract(e.duration).millisecondsSinceEpoch < now &&
+            e.startLast.millisecondsSinceEpoch > now) {
+          hideTest = true;
+        }
+      });
+      if (testId != null && hideTest) {
+        hide[testId] = true;
+      }
+    }
     return WillPopScope(
       onWillPop: () async {
         MoveToBackground.moveTaskToBack();
@@ -73,12 +126,22 @@ class _MyAppState extends State<MyApp> {
         body: Container(
           width: double.maxFinite,
           child: SafeArea(
-            child: ListView(
-              children: [
-                for (var index = 0; index < eventCount; index++)
-                  TTEventCard(event: events[index]),
-                TTTag(tag: tag),
-              ],
+            child: RefreshIndicator(
+              onRefresh: () async {
+                registration.flushEvents();
+                events = await registration.events;
+                if (mounted) {
+                  setState(() {});
+                }
+                return;
+              },
+              child: ListView(
+                children: [
+                  for (var index = 0; index < eventCount; index++)
+                    if (hide[index] != true) TTEventCard(event: events[index]),
+                  TTTag(tag: tag),
+                ],
+              ),
             ),
           ),
         ),
