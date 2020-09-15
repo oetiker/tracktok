@@ -45,30 +45,28 @@ class Tracker {
       }
       data['stepCount'] = stepCount - stepStart;
     }, cancelOnError: true);
-    positionStream = Geolocator()
-        .getPositionStream(
-      LocationOptions(
-        accuracy: LocationAccuracy.bestForNavigation,
-        distanceFilter: 2,
-      ),
-    )
-        .listen((Position position) async {
+    positionStream = getPositionStream(
+      desiredAccuracy: LocationAccuracy.bestForNavigation,
+      distanceFilter: 2,
+    ).listen((Position position) async {
       if (position != null) {
         if (positionPrev == null) {
           positionPrev = position;
         }
 
-        var distance = await Geolocator().distanceBetween(positionPrev.latitude,
+        var distance = distanceBetween(positionPrev.latitude,
             positionPrev.longitude, position.latitude, position.longitude);
         data['state'] = 'running';
         data['distance'] = (totalDistance + distance) / 1000;
         data['alt'] = position.altitude;
         data['accuracy'] = position.accuracy;
         data['speed'] = position.speed;
-        var sm = 1.0 / position.speed / 60.0 * 1000.0;
-        var smm = sm.floor();
-        var sms = ((sm - smm) * 60.0).floor();
-        data['tpk'] = "$smm'$sms" + '" km';
+        if (position.speed != null && position.speed > 0) {
+          var sm = 1.0 / position.speed / 60.0 * 1000.0;
+          var smm = sm.floor();
+          var sms = ((sm - smm) * 60.0).floor();
+          data['tpk'] = "$smm'$sms" + '" km';
+        }
         data['heading'] = position.heading;
         data['cnt'] = locationCnt++;
         if (max(positionPrev.accuracy, position.accuracy) > distance) {
