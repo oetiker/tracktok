@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_background_geolocation/flutter_background_geolocation.dart'
+    as bg;
 
 import 'dart:async';
 import 'dart:ui';
@@ -7,16 +9,16 @@ import 'dart:ui';
 import 'package:sprintf/sprintf.dart';
 
 import 'package:intl/intl.dart';
-import 'package:isolate_handler/isolate_handler.dart';
 import 'package:auto_size_text/auto_size_text.dart';
+import 'package:tracktok/ttglobal.dart';
 import 'ttuploader.dart';
-import 'tracker.dart';
 import 'ttevent.dart';
+// import 'package:pedometer/pedometer.dart';
 
 class TTTrackingScreen extends StatefulWidget {
   const TTTrackingScreen({
     Key key,
-    @required this.event,
+    this.event,
   }) : super(key: key);
 
   final TTEvent event;
@@ -26,13 +28,14 @@ class TTTrackingScreen extends StatefulWidget {
 }
 
 class _TrackingState extends State<TTTrackingScreen>
-// with WidgetsBindingObserver
-{
-  final isolates = IsolateHandler();
-
+    with WidgetsBindingObserver {
+  // final isolates = IsolateHandler();
+  final uploader = TTUploader();
+  int lastUpload;
   Map<String, dynamic> data = {};
   bool isReady = false;
-  bool trackerOn = false;
+  bool trackerOn;
+  DateTime startTs;
   // Timer refreshTimer;
   int locationCnt = 0;
   //final upLink = UpLink();
@@ -45,73 +48,200 @@ class _TrackingState extends State<TTTrackingScreen>
   @override
   void initState() {
     super.initState();
-    TTUploader().stopSyncBack();
-    isolates.spawn<dynamic>(
-      trackerStarter,
-      name: 'tracker',
-      onReceive: (input) => trackerReceiver(context, input),
-      onInitialized: () => isolates.send(
-        {
-          'type': 'event',
-          'eventId': widget.event.id,
-          'eventDurationMs': widget.event.duration.inMilliseconds,
-        },
-        to: 'tracker',
-      ),
-    );
-    trackerOn = true;
-    //WidgetsBinding.instance.addObserver(this);
+    WidgetsBinding.instance.addObserver(this);
+    startTracker();
   }
 
-  // @override
-  // void dispose() {
-  //   //WidgetsBinding.instance.removeObserver(this);
-  //   super.dispose();
-  // }
+  Future startTracker() async {
+    bg.BackgroundGeolocation.onLocation(onLocation, (bg.LocationError error) {
+      print('[onLocation] ERROR: $error');
+    });
+    bg.BackgroundGeolocation.onProviderChange(onProviderChange);
+    await bg.BackgroundGeolocation.start();
+  }
 
-  // @override
-  // void didChangeAppLifecycleState(AppLifecycleState state) {
-  //   print("APP_STATE: $state");
-
-  //   if (state == AppLifecycleState.resumed) {
-  //     // user returned to our app
-  //   } else if (state == AppLifecycleState.inactive) {
-  //     // app is inactive
-  //   } else if (state == AppLifecycleState.paused) {
-  //     // user quit our app temporally
-  //   } else if (state == AppLifecycleState.detached) {
-  //     // app detached
-  //   }
-  // }
-
-  void stopTracker() {
-    if (trackerOn == true) {
-      isolates.send({'type': 'stop'}, to: 'tracker');
+  Timer tickerTimer;
+  Future setLocationExtra(bg.Location location) async {
+    var eventId = location.extras['eventId'];
+    var startTs = location.extras['startTs'];
+    if (eventId != widget.event.id) {
+      startTs = DateTime.parse(location.timestamp).millisecondsSinceEpoch;
+      await bg.BackgroundGeolocation.setOdometer(0);
+      await bg.BackgroundGeolocation.setConfig(bg.Config(extras: {
+        "startTs": DateTime.parse(location.timestamp).millisecondsSinceEpoch,
+        "eventId": widget.event.id,
+        "eventName": widget.event.name
+      }));
+      tickerTimer = Timer.periodic(Duration(/* seconds: */ seconds: 1), (t) {
+        int remaining = startTs +
+            widget.event.duration.inMilliseconds -
+            DateTime.now().millisecondsSinceEpoch;
+        if (remaining >= 0) {
+          data['remaining'] = DateTime.fromMillisecondsSinceEpoch(
+            remaining,
+            isUtc: true,
+          );
+          if (mounted) {
+            setState(() {});
+          }
+        } else {
+          t.cancel();
+          tickerTimer = null;
+        }
+      });
+    }
+    trackerOn = true;
+    if (mounted) {
+      setState(() {});
     }
     return;
   }
 
-  void trackerReceiver(
-    BuildContext context,
-    dynamic status,
-  ) {
-    if (status is Map && status['state'] is String) {
-      switch (status['state']) {
-        case 'done':
-          trackerOn = false;
-          setState(() {});
-          isolates.kill('tracker');
-          TTUploader().startSyncBack();
-          break;
-        case 'running':
-          setState(() {
-            data = status;
-          });
-          break;
-        case 'locating':
-          break;
+  Future onProviderChange(bg.ProviderChangeEvent event) async {
+    print("[providerchange] - $event");
+    // Did the user disable precise locadtion in iOS 14+?
+    if (event.accuracyAuthorization ==
+        bg.ProviderChangeEvent.ACCURACY_AUTHORIZATION_REDUCED) {
+      // Supply "Purpose" key from Info.plist as 1st argument.
+      try {
+        int accuracyAuthorization =
+            await bg.BackgroundGeolocation.requestTemporaryFullAccuracy(
+                "TrackTok needs for GPS precision while tracking your run.");
+        if (accuracyAuthorization ==
+            bg.ProviderChangeEvent.ACCURACY_AUTHORIZATION_FULL) {
+          print(
+              "[requestTemporaryFullAccuracy] GRANTED:  $accuracyAuthorization");
+        } else {
+          print(
+              "[requestTemporaryFullAccuracy] DENIED:  $accuracyAuthorization");
+        }
+      } catch (error) {
+        print("[requestTemporaryFullAccuracy] FAILED TO SHOW DIALOG: $error");
       }
     }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    stopTracker();
+    if (tickerTimer != null) {
+      tickerTimer.cancel();
+    }
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      bg.BackgroundGeolocation.changePace(true);
+      if (mounted) {
+        setState(() {});
+      }
+    }
+  }
+
+  Future stopTracker() async {
+    if (trackerOn == true) {
+      await bg.BackgroundGeolocation.removeListeners();
+      await bg.BackgroundGeolocation.stop();
+      // remove the extras configuration
+      await bg.BackgroundGeolocation.setConfig(bg.Config(extras: {}));
+      trackerOn = false;
+      if (mounted) {
+        setState(() {});
+      }
+    }
+    return;
+  }
+
+  var trackProcessing = false;
+  void onLocation(bg.Location location) async {
+    if (trackProcessing) {
+      return;
+    }
+    trackProcessing = true;
+    try {
+      // print("Got Location $location");
+      if (trackerOn == false) {
+        print("Skipping location - trackerOff");
+        trackProcessing = false;
+        return;
+      }
+      if (trackerOn == null) {
+        await setLocationExtra(location);
+        trackProcessing = false;
+        return;
+      }
+      var startTs = location.extras['startTs'];
+      if (startTs == null) {
+        print("Skip empty extra in $location");
+        trackProcessing = false;
+        return;
+      }
+      var now = DateTime.now().millisecondsSinceEpoch;
+      var start = DateTime.fromMillisecondsSinceEpoch(
+        startTs,
+        isUtc: true,
+      );
+      int elapsed = startTs != null ? now - startTs : null;
+      var tpk = '-';
+      if (location.coords.speed > 0) {
+        var sm = 1.0 / location.coords.speed / 60.0 * 1000.0;
+        var smm = sm.floor();
+        var sms = ((sm - smm) * 60.0).floor();
+        tpk = "$smm'$sms" + '" km';
+      }
+      data = <String, dynamic>{
+        'distance': location.odometer / 1000,
+        'remaining': elapsed != null
+            ? DateTime.fromMillisecondsSinceEpoch(
+                widget.event.duration.inMilliseconds - elapsed,
+                isUtc: true,
+              )
+            : null,
+        'steps': 0,
+        'alt': location.coords.altitude,
+        'tpk': tpk,
+        'accuracy': location.coords.accuracy,
+        'heading': location.coords.heading
+      };
+      var track = <String, int>{
+        'distance_m': (data['distance'] * 1000).floor(),
+        'duration_s': (elapsed / 1000).floor(),
+        'up_m': 0,
+        'down_m': 0,
+        'steps': 0
+      };
+      var duration = widget.event.duration.inMilliseconds;
+      if (elapsed > widget.event.duration.inMilliseconds) {
+        track['distance_m'] =
+            (track['distance_m'] / elapsed * duration).floor();
+        track['duration_s'] = (duration / 1000).floor();
+        uploader.push(widget.event, start, track);
+        await stopTracker();
+        data['remaining'] = DateTime.fromMillisecondsSinceEpoch(
+          0,
+          isUtc: true,
+        );
+        if (mounted) {
+          setState(() {});
+        }
+        return;
+      }
+      if (lastUpload == null ||
+          now - lastUpload > TTGlobal.uploadInterval.inMilliseconds) {
+        lastUpload = now;
+        uploader.push(widget.event, start, track);
+      }
+      if (mounted) {
+        setState(() {});
+      }
+    } catch (err) {
+      print("Location Processing Error: $err");
+    }
+    trackProcessing = false;
+    return;
   }
 
   Future<bool> onStop(BuildContext context) async {
@@ -185,15 +315,9 @@ class _TrackingState extends State<TTTrackingScreen>
       },
     );
     if (result == true) {
-      stopTracker();
+      await stopTracker();
     }
     return result;
-  }
-
-  static void trackerStarter(Map<String, dynamic> context) {
-    final messenger = HandledIsolate.initialize(context);
-    final tracker = Tracker(messenger);
-    tracker.start();
   }
 
   String _bePrint(String format, String key) {
@@ -214,9 +338,6 @@ class _TrackingState extends State<TTTrackingScreen>
           await onStop(context);
           return false;
         }
-        if (trackerOn == false) {
-          return true;
-        }
         return true;
       },
       child: Scaffold(
@@ -225,16 +346,14 @@ class _TrackingState extends State<TTTrackingScreen>
         ),
         floatingActionButton: FloatingActionButton.extended(
           materialTapTargetSize: MaterialTapTargetSize.padded,
-          onPressed: trackerOn == null
-              ? null
-              : () async {
-                  if (trackerOn == true) {
-                    await onStop(context);
-                    return;
-                  }
-                  Navigator.pop(context);
-                  return;
-                },
+          onPressed: () async {
+            if (trackerOn == true) {
+              await onStop(context);
+              return;
+            }
+            Navigator.pop(context);
+            return;
+          },
           backgroundColor: trackerOn == true
               ? Theme.of(context).accentColor
               : Theme.of(context).primaryColor,
@@ -244,55 +363,64 @@ class _TrackingState extends State<TTTrackingScreen>
           width: double.maxFinite,
           padding: const EdgeInsets.all(30),
           child: SafeArea(
-            child: Column(
-              children: <Widget>[
-                GridView.count(
-                    primary: false,
-                    shrinkWrap: true,
-                    padding: const EdgeInsets.all(0.0),
-                    crossAxisCount: 2,
-                    crossAxisSpacing: 10,
-                    mainAxisSpacing: 8,
-                    childAspectRatio: 2.3,
-                    children: <Widget>[
-                      PropCard(
-                          title: "Remaining",
-                          value: data == null
-                              ? ""
-                              : data['remaining'] is DateTime
-                                  ? DateFormat.Hms().format(data['remaining'])
-                                  : data['remaining']),
-                      PropCard(
-                          title: "Distance",
-                          value: _bePrint("%.2f km", 'distance')),
-                      PropCard(
-                          title: "Steps", value: _bePrint("%d", 'stepCount')),
-                      PropCard(
-                          title: "Altitude", value: _bePrint("%.0f m", 'alt')),
-                      PropCard(
-                          title: "Measurements", value: _bePrint("%d", 'cnt')),
-                      PropCard(
-                          title: "Speed",
-                          value: data == null ? "" : data['tpk']),
-                      PropCard(
-                          title: "Accuracy",
-                          value: _bePrint("%.0f m", 'accuracy')),
-                      PropCard(
-                          title: "Heading",
-                          value: _bePrint("%.0f°", 'heading')),
-                    ]),
-                if (trackerOn == false) ...[
+            child: LayoutBuilder(
+                builder: (BuildContext context, BoxConstraints constraints) {
+              var width = constraints.constrainWidth() / 2;
+              return Column(children: <Widget>[
+                Row(children: <Widget>[
+                  PropCard(
+                      width: width,
+                      title: "Remaining",
+                      value: data == null
+                          ? ""
+                          : data['remaining'] is DateTime
+                              ? DateFormat.Hms().format(data['remaining'])
+                              : data['remaining']),
+                  PropCard(
+                      width: width,
+                      title: "Distance",
+                      value: _bePrint("%.2f km", 'distance')),
+                ]),
+                Row(children: <Widget>[
+                  PropCard(
+                    width: width,
+                    title: "Altitude",
+                    value: _bePrint("%.0f m", 'alt'),
+                  ),
+                  PropCard(
+                    width: width,
+                    title: "Speed",
+                    value: data == null ? "" : data['tpk'],
+                  ),
+                ]),
+                Row(children: <Widget>[
+                  PropCard(
+                    width: width,
+                    title: "Accuracy",
+                    value: _bePrint("%.0f m", 'accuracy'),
+                  ),
+                  PropCard(
+                    width: width,
+                    title: "Heading",
+                    value: _bePrint("%.0f°", 'heading'),
+                  ),
+                ]),
+                if (trackerOn != true)
                   Expanded(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         AutoSizeText(
-                          'FINISH',
+                          trackerOn == false
+                              ? 'FINISH'
+                              : 'Waiting for GPS data',
                           stepGranularity: 2,
                           maxFontSize: 84,
-                          maxLines: 2,
+                          maxLines: 1,
                           style: TextStyle(
-                            color: Theme.of(context).accentColor,
+                            color: trackerOn == false
+                                ? Theme.of(context).accentColor
+                                : Theme.of(context).hintColor,
                             fontSize: 60,
                             fontWeight: FontWeight.bold,
                             fontFeatures: [
@@ -303,9 +431,8 @@ class _TrackingState extends State<TTTrackingScreen>
                       ],
                     ),
                   ),
-                ]
-              ],
-            ),
+              ]);
+            }),
           ),
         ),
       ),
@@ -321,51 +448,59 @@ class PropCard extends StatelessWidget {
     Key key,
     @required this.title,
     @required this.value,
+    @required this.width,
   }) : super(key: key);
 
   final String title;
   final String value;
+  final double width;
 
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.max,
-      children: <Widget>[
-        FractionallySizedBox(
-          alignment: Alignment.bottomLeft,
-          widthFactor: 0.6,
-          child: AutoSizeText(
-            '$title',
-            group: titleGroup,
-            style: TextStyle(
-              fontSize: 30,
-              fontFeatures: [
-                FontFeature.tabularFigures(),
-              ],
-            ),
-            maxLines: 1,
-          ),
-        ),
-        SizedBox(height: 4),
-        FractionallySizedBox(
-          alignment: Alignment.bottomLeft,
-          widthFactor: 0.9,
-          child: AutoSizeText(
-            value == null || value == "" ? "—" : value,
-            group: valueGroup,
-            stepGranularity: 2,
-            maxFontSize: value == null || value == "" ? 28 : 54,
-            maxLines: 1,
-            style: TextStyle(
-              fontSize: 60,
-              fontWeight: FontWeight.bold,
-              fontFeatures: [
-                FontFeature.tabularFigures(),
-              ],
+    return SizedBox(
+      width: width,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.max,
+        children: <Widget>[
+          FractionallySizedBox(
+            alignment: Alignment.bottomLeft,
+            widthFactor: 0.6,
+            child: AutoSizeText(
+              '$title',
+              group: titleGroup,
+              style: TextStyle(
+                fontSize: 30,
+                fontFeatures: [
+                  FontFeature.tabularFigures(),
+                ],
+              ),
+              maxLines: 1,
             ),
           ),
-        ),
-      ],
+          SizedBox(height: 4),
+          FractionallySizedBox(
+            alignment: Alignment.bottomRight,
+            widthFactor: 0.9,
+            child: AutoSizeText(
+              value == null || value == "" ? "—" : value,
+              group: valueGroup,
+              stepGranularity: 2,
+              maxFontSize: value == null || value == "" ? 28 : 54,
+              maxLines: 1,
+              style: TextStyle(
+                fontSize: 60,
+                fontWeight: FontWeight.bold,
+                fontFeatures: [
+                  FontFeature.tabularFigures(),
+                ],
+              ),
+            ),
+          ),
+          SizedBox(
+            height: 16,
+          )
+        ],
+      ),
     );
   }
 }

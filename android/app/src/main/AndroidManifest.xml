@@ -12,8 +12,10 @@
          FlutterApplication and put your custom class here. -->
     <application
         android:name="io.flutter.app.FlutterApplication"
-        android:label="TrackTok"
         android:icon="@mipmap/launcher_icon">
+        <service android:name="com.transistorsoft.locationmanager.service.TrackingService" android:foregroundServiceType="location" />
+        <service android:name="com.transistorsoft.locationmanager.service.LocationRequestService" android:foregroundServiceType="location" />
+        <meta-data android:name="com.transistorsoft.locationmanager.license" android:value="0b9f11ee120687ead93b69e6e87b5deb4f311022c79e3432f282a245b3d6c090" />
         <activity
             android:name=".MainActivity"
             android:launchMode="singleTop"

@@ -23,7 +23,7 @@ class TTUploader {
     }
     _trackCache = {};
     var cacheStr = await _registry.get('uploadCache');
-    print("Upload Cache: ${cacheStr}");
+    print("Upload Cache: $cacheStr");
     if (cacheStr != null) {
       try {
         var _tempCache = jsonDecode(cacheStr);
@@ -99,7 +99,7 @@ class TTUploader {
     return Future.wait(tasks).then((counts) {
       int pending = 0;
       counts.forEach((ret) {
-        print("- ${ret} unsaved entries");
+        print("- $ret unsaved entries");
         pending += ret;
       });
       return pending;
@@ -142,7 +142,7 @@ class TTUploader {
       return 0;
     }
     if (uploadInProgress[uipKey] == true) {
-      print("Skipping upload ${uipKey} ... already in progress");
+      print("Skipping upload $uipKey ... already in progress");
       return pending;
     }
     uploadInProgress[uipKey] = true;

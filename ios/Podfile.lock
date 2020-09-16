@@ -1,10 +1,12 @@
 PODS:
+  - background_fetch (0.6.0):
+    - Flutter
+  - CocoaLumberjack (3.6.1):
+    - CocoaLumberjack/Core (= 3.6.1)
+  - CocoaLumberjack/Core (3.6.1)
   - Flutter (1.0.0)
-  - flutter_isolate (0.0.1):
-    - Flutter
-  - "geolocator (5.3.2+2)":
-    - Flutter
-  - "location_permissions (3.0.0+1)":
+  - "flutter_background_geolocation (1.10.0+1)":
+    - CocoaLumberjack (~> 3.6.0)
     - Flutter
   - move_to_background (0.0.1):
     - Flutter
@@ -16,24 +18,25 @@ PODS:
     - Flutter
 
 DEPENDENCIES:
+  - background_fetch (from `.symlinks/plugins/background_fetch/ios`)
   - Flutter (from `Flutter`)
-  - flutter_isolate (from `.symlinks/plugins/flutter_isolate/ios`)
-  - geolocator (from `.symlinks/plugins/geolocator/ios`)
-  - location_permissions (from `.symlinks/plugins/location_permissions/ios`)
+  - flutter_background_geolocation (from `.symlinks/plugins/flutter_background_geolocation/ios`)
   - move_to_background (from `.symlinks/plugins/move_to_background/ios`)
   - path_provider (from `.symlinks/plugins/path_provider/ios`)
   - pedometer (from `.symlinks/plugins/pedometer/ios`)
   - permission_handler (from `.symlinks/plugins/permission_handler/ios`)
 
+SPEC REPOS:
+  trunk:
+    - CocoaLumberjack
+
 EXTERNAL SOURCES:
+  background_fetch:
+    :path: ".symlinks/plugins/background_fetch/ios"
   Flutter:
     :path: Flutter
-  flutter_isolate:
-    :path: ".symlinks/plugins/flutter_isolate/ios"
-  geolocator:
-    :path: ".symlinks/plugins/geolocator/ios"
-  location_permissions:
-    :path: ".symlinks/plugins/location_permissions/ios"
+  flutter_background_geolocation:
+    :path: ".symlinks/plugins/flutter_background_geolocation/ios"
   move_to_background:
     :path: ".symlinks/plugins/move_to_background/ios"
   path_provider:
@@ -44,10 +47,10 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/permission_handler/ios"
 
 SPEC CHECKSUMS:
+  background_fetch: 9221ccc02b41aff8a52b2090d9f791c5ed82eaee
+  CocoaLumberjack: b17ae15142558d08bbacf69775fa10c4abbebcc9
   Flutter: 0e3d915762c693b495b44d77113d4970485de6ec
-  flutter_isolate: 0edf5081826d071adf21759d1eb10ff5c24503b5
-  geolocator: f7622e0e7e2a24718285b73916d60c4a54b9f5b6
-  location_permissions: 7e0f9aa0f60deb8ff93ddf0e2a164c7e8197bc94
+  flutter_background_geolocation: 24e7a54403a9cabbcace22b8e4db152b747bb783
   move_to_background: 39a5b79b26d577b0372cbe8a8c55e7aa9fcd3a2d
   path_provider: abfe2b5c733d04e238b0d8691db0cfd63a27a93c
   pedometer: e27471953eabc0ceed97e4828c0bccf91d179d86

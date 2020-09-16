@@ -11,6 +11,8 @@ import 'ttregistration.dart';
 import 'ttevent.dart';
 import 'tttag.dart';
 import 'tteventcard.dart';
+import 'package:flutter_background_geolocation/flutter_background_geolocation.dart'
+    as bg;
 
 void main() {
   // LicenseRegistry.addLicense(() async* {
@@ -54,12 +56,27 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         setState(() {});
       }
     });
+    initBackgroundLocation();
     WidgetsBinding.instance.addObserver(this);
     Timer.periodic(Duration(/* seconds: */ minutes: 1), (t) {
       if (mounted) {
         setState(() {});
       }
     });
+  }
+
+  Future initBackgroundLocation() async {
+    return bg.BackgroundGeolocation.reset(
+      bg.Config(
+        desiredAccuracy: bg.Config.DESIRED_ACCURACY_NAVIGATION,
+        showsBackgroundLocationIndicator: true,
+        distanceFilter: 1,
+        isMoving: true,
+        pausesLocationUpdatesAutomatically: false,
+        desiredOdometerAccuracy: 30,
+        logLevel: bg.Config.LOG_LEVEL_ERROR,
+      ),
+    );
   }
 
   @override

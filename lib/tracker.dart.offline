@@ -2,9 +2,10 @@ import 'dart:async';
 import 'package:pedometer/pedometer.dart';
 import 'dart:math';
 import 'ttuploader.dart';
-import 'package:geolocator/geolocator.dart';
 import 'ttevent.dart';
 import 'ttglobal.dart';
+import 'package:flutter_background_geolocation/flutter_background_geolocation.dart'
+    as bg;
 
 class Tracker {
   Tracker(

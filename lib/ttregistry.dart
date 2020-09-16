@@ -42,10 +42,15 @@ class TTRegistry {
   }
 
   Future<String> put(String key, String value) async {
-    var rec = registry.record(key);
-    var dbh = await _db();
-    var ret = await rec.put(dbh, value);
-    dbh.close();
+    var ret;
+    try {
+      var rec = registry.record(key);
+      var dbh = await _db();
+      ret = await rec.put(dbh, value);
+      dbh.close();
+    } catch (e) {
+      print("$e ($key: $value)");
+    }
     return ret;
   }
 }

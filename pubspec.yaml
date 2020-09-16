@@ -15,7 +15,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # In iOS, build-name is used as CFBundleShortVersionString while build-number used as CFBundleVersion.
 # Read more about iOS versioning at
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
-version: 1.2.4+15
+version: 1.2.5+16
 
 environment:
   sdk: ">=2.7.0 <3.0.0"
@@ -29,11 +29,11 @@ dependencies:
   # Use with the CupertinoIcons class for iOS style icons.
   #cupertino_icons: ^0.1.3
   # https://pub.dev/packages/isolate_handler
-  isolate_handler: ^0.3.1
-  flutter_isolate: ^1.0.0+14
+  # isolate_handler: ^0.3.1
+  # flutter_isolate: ^1.0.0+14
   permission_handler: ^5.0.0+1
   # https://pub.dev/packages/geolocator
-  geolocator: ^6.0.0
+  # geolocator: ^6.0.0
   # https://pub.dev/packages/pedometer
   pedometer: ^1.2.0
   # path_provider: ^1.6.9
@@ -59,6 +59,7 @@ dependencies:
   path_provider: ^1.6.11
   slider_button: ^0.5.0
   meta: ^1.1.8
+  flutter_background_geolocation: ^1.10.0+1
   # animations: ^1.1.2
 
 # dependency_overrides:
