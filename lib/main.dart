@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -66,6 +67,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   }
 
   Future initBackgroundLocation() async {
+    bg.BackgroundGeolocation.onProviderChange(onProviderChange);
     return bg.BackgroundGeolocation.reset(
       bg.Config(
         desiredAccuracy: bg.Config.DESIRED_ACCURACY_NAVIGATION,
@@ -77,6 +79,30 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         logLevel: bg.Config.LOG_LEVEL_ERROR,
       ),
     );
+  }
+
+  Future onProviderChange(bg.ProviderChangeEvent event) async {
+    print("[providerchange] - $event");
+    // Did the user disable precise locadtion in iOS 14+?
+    if (event.accuracyAuthorization ==
+        bg.ProviderChangeEvent.ACCURACY_AUTHORIZATION_REDUCED) {
+      // Supply "Purpose" key from Info.plist as 1st argument.
+      try {
+        int accuracyAuthorization =
+            await bg.BackgroundGeolocation.requestTemporaryFullAccuracy(
+                "TrackTok needs for GPS precision while tracking your run.");
+        if (accuracyAuthorization ==
+            bg.ProviderChangeEvent.ACCURACY_AUTHORIZATION_FULL) {
+          print(
+              "[requestTemporaryFullAccuracy] GRANTED:  $accuracyAuthorization");
+        } else {
+          print(
+              "[requestTemporaryFullAccuracy] DENIED:  $accuracyAuthorization");
+        }
+      } catch (error) {
+        print("[requestTemporaryFullAccuracy] FAILED TO SHOW DIALOG: $error");
+      }
+    }
   }
 
   @override

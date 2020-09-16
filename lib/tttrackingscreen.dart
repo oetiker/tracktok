@@ -31,20 +31,25 @@ class _TrackingState extends State<TTTrackingScreen>
     with WidgetsBindingObserver {
   // final isolates = IsolateHandler();
   final uploader = TTUploader();
-  int lastUpload;
+  DateTime lastUpload;
   Map<String, dynamic> data = {};
   bool isReady = false;
   bool trackerOn;
-  DateTime startTs;
-  // Timer refreshTimer;
+  DateTime start;
+
+  Duration get remaining {
+    return widget.event.duration - duration;
+  }
+
+  Duration get duration {
+    return now.difference(start);
+  }
+
+  DateTime get now {
+    return DateTime.now();
+  }
+
   int locationCnt = 0;
-  //final upLink = UpLink();
-
-  // @override
-  // void initState() {
-  //   super.initState();
-  // }
-
   @override
   void initState() {
     super.initState();
@@ -52,73 +57,34 @@ class _TrackingState extends State<TTTrackingScreen>
     startTracker();
   }
 
+  Timer tickerTimer;
   Future startTracker() async {
     bg.BackgroundGeolocation.onLocation(onLocation, (bg.LocationError error) {
       print('[onLocation] ERROR: $error');
     });
-    bg.BackgroundGeolocation.onProviderChange(onProviderChange);
+    start = DateTime.now();
     await bg.BackgroundGeolocation.start();
-  }
+    await bg.BackgroundGeolocation.setOdometer(0);
 
-  Timer tickerTimer;
-  Future setLocationExtra(bg.Location location) async {
-    var eventId = location.extras['eventId'];
-    var startTs = location.extras['startTs'];
-    if (eventId != widget.event.id) {
-      startTs = DateTime.parse(location.timestamp).millisecondsSinceEpoch;
-      await bg.BackgroundGeolocation.setOdometer(0);
-      await bg.BackgroundGeolocation.setConfig(bg.Config(extras: {
-        "startTs": DateTime.parse(location.timestamp).millisecondsSinceEpoch,
-        "eventId": widget.event.id,
-        "eventName": widget.event.name
-      }));
-      tickerTimer = Timer.periodic(Duration(/* seconds: */ seconds: 1), (t) {
-        int remaining = startTs +
-            widget.event.duration.inMilliseconds -
-            DateTime.now().millisecondsSinceEpoch;
-        if (remaining >= 0) {
-          data['remaining'] = DateTime.fromMillisecondsSinceEpoch(
-            remaining,
-            isUtc: true,
-          );
-          if (mounted) {
-            setState(() {});
-          }
-        } else {
-          t.cancel();
-          tickerTimer = null;
+    tickerTimer = Timer.periodic(Duration(seconds: 1), (t) {
+      if (remaining.inSeconds >= 0) {
+        data['remaining'] = DateTime.fromMillisecondsSinceEpoch(
+          remaining.inMilliseconds,
+          isUtc: true,
+        );
+        if (mounted) {
+          setState(() {});
         }
-      });
-    }
+      } else {
+        t.cancel();
+        tickerTimer = null;
+      }
+    });
     trackerOn = true;
     if (mounted) {
       setState(() {});
     }
     return;
-  }
-
-  Future onProviderChange(bg.ProviderChangeEvent event) async {
-    print("[providerchange] - $event");
-    // Did the user disable precise locadtion in iOS 14+?
-    if (event.accuracyAuthorization ==
-        bg.ProviderChangeEvent.ACCURACY_AUTHORIZATION_REDUCED) {
-      // Supply "Purpose" key from Info.plist as 1st argument.
-      try {
-        int accuracyAuthorization =
-            await bg.BackgroundGeolocation.requestTemporaryFullAccuracy(
-                "TrackTok needs for GPS precision while tracking your run.");
-        if (accuracyAuthorization ==
-            bg.ProviderChangeEvent.ACCURACY_AUTHORIZATION_FULL) {
-          print(
-              "[requestTemporaryFullAccuracy] GRANTED:  $accuracyAuthorization");
-        } else {
-          print(
-              "[requestTemporaryFullAccuracy] DENIED:  $accuracyAuthorization");
-        }
-      } catch (error) {
-        print("[requestTemporaryFullAccuracy] FAILED TO SHOW DIALOG: $error");
-      }
-    }
   }
 
   @override
@@ -132,21 +98,25 @@ class _TrackingState extends State<TTTrackingScreen>
   }
 
   @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
+  void didChangeAppLifecycleState(AppLifecycleState state) async {
     if (state == AppLifecycleState.resumed) {
-      bg.BackgroundGeolocation.changePace(true);
-      if (mounted) {
-        setState(() {});
+      if ((await bg.BackgroundGeolocation.state).enabled == true) {
+        bg.BackgroundGeolocation.changePace(true);
+        if (mounted) {
+          setState(() {});
+        }
       }
     }
   }
 
   Future stopTracker() async {
     if (trackerOn == true) {
+      if (tickerTimer != null) {
+        tickerTimer.cancel();
+        tickerTimer = null;
+      }
       await bg.BackgroundGeolocation.removeListeners();
       await bg.BackgroundGeolocation.stop();
-      // remove the extras configuration
-      await bg.BackgroundGeolocation.setConfig(bg.Config(extras: {}));
       trackerOn = false;
       if (mounted) {
         setState(() {});
@@ -157,7 +127,7 @@ class _TrackingState extends State<TTTrackingScreen>
 
   var trackProcessing = false;
   void onLocation(bg.Location location) async {
-    if (trackProcessing) {
+    if (trackProcessing || start == null) {
       return;
     }
     trackProcessing = true;
@@ -169,37 +139,23 @@ class _TrackingState extends State<TTTrackingScreen>
         return;
       }
       if (trackerOn == null) {
-        await setLocationExtra(location);
         trackProcessing = false;
         return;
       }
-      var startTs = location.extras['startTs'];
-      if (startTs == null) {
-        print("Skip empty extra in $location");
-        trackProcessing = false;
-        return;
-      }
-      var now = DateTime.now().millisecondsSinceEpoch;
-      var start = DateTime.fromMillisecondsSinceEpoch(
-        startTs,
-        isUtc: true,
-      );
-      int elapsed = startTs != null ? now - startTs : null;
+
       var tpk = '-';
       if (location.coords.speed > 0) {
         var sm = 1.0 / location.coords.speed / 60.0 * 1000.0;
         var smm = sm.floor();
         var sms = ((sm - smm) * 60.0).floor();
-        tpk = "$smm'$sms" + '" km';
+        tpk = smm <= 99 ? "$smm'$sms" + '" km' : null;
       }
       data = <String, dynamic>{
         'distance': location.odometer / 1000,
-        'remaining': elapsed != null
-            ? DateTime.fromMillisecondsSinceEpoch(
-                widget.event.duration.inMilliseconds - elapsed,
-                isUtc: true,
-              )
-            : null,
+        'remaining': DateTime.fromMillisecondsSinceEpoch(
+          remaining.inMilliseconds,
+          isUtc: true,
+        ),
         'steps': 0,
         'alt': location.coords.altitude,
         'tpk': tpk,
@@ -208,16 +164,18 @@ class _TrackingState extends State<TTTrackingScreen>
       };
       var track = <String, int>{
         'distance_m': (data['distance'] * 1000).floor(),
-        'duration_s': (elapsed / 1000).floor(),
+        'duration_s': duration.inSeconds,
         'up_m': 0,
         'down_m': 0,
         'steps': 0
       };
-      var duration = widget.event.duration.inMilliseconds;
-      if (elapsed > widget.event.duration.inMilliseconds) {
-        track['distance_m'] =
-            (track['distance_m'] / elapsed * duration).floor();
-        track['duration_s'] = (duration / 1000).floor();
+
+      if (remaining.inMilliseconds <= 0) {
+        track['distance_m'] = (track['distance_m'] /
+                duration.inMilliseconds *
+                widget.event.duration.inMilliseconds)
+            .floor();
+        track['duration_s'] = duration.inSeconds;
         uploader.push(widget.event, start, track);
         await stopTracker();
         data['remaining'] = DateTime.fromMillisecondsSinceEpoch(
@@ -230,7 +188,7 @@ class _TrackingState extends State<TTTrackingScreen>
         return;
       }
       if (lastUpload == null ||
-          now - lastUpload > TTGlobal.uploadInterval.inMilliseconds) {
+          now.difference(lastUpload) > TTGlobal.uploadInterval) {
         lastUpload = now;
         uploader.push(widget.event, start, track);
       }
@@ -374,7 +332,8 @@ class _TrackingState extends State<TTTrackingScreen>
                       value: data == null
                           ? ""
                           : data['remaining'] is DateTime
-                              ? DateFormat.Hms().format(data['remaining'])
+                              ? '  ' +
+                                  DateFormat.Hms().format(data['remaining'])
                               : data['remaining']),
                   PropCard(
                       width: width,
@@ -459,14 +418,15 @@ class PropCard extends StatelessWidget {
     return SizedBox(
       width: width,
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.end,
         mainAxisSize: MainAxisSize.max,
         children: <Widget>[
           FractionallySizedBox(
-            alignment: Alignment.bottomLeft,
+            alignment: Alignment.bottomRight,
             widthFactor: 0.6,
             child: AutoSizeText(
               '$title',
+              textAlign: TextAlign.right,
               group: titleGroup,
               style: TextStyle(
                 fontSize: 30,
@@ -482,10 +442,11 @@ class PropCard extends StatelessWidget {
             alignment: Alignment.bottomRight,
             widthFactor: 0.9,
             child: AutoSizeText(
-              value == null || value == "" ? "—" : value,
+              value == null || value == "" ? "—       " : value,
               group: valueGroup,
+              textAlign: TextAlign.right,
               stepGranularity: 2,
-              maxFontSize: value == null || value == "" ? 28 : 54,
+              maxFontSize: 54,
               maxLines: 1,
               style: TextStyle(
                 fontSize: 60,
