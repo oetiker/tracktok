@@ -4,8 +4,8 @@ import 'package:intl/intl.dart';
 
 class TTEventInfo extends StatelessWidget {
   TTEventInfo({
-    Key key,
-    @required this.event,
+    Key? key,
+    required this.event,
   }) : super(key: key);
   final TTEvent event;
 
@@ -20,12 +20,12 @@ class TTEventInfo extends StatelessWidget {
         children: <Widget>[
           TTLabelValueField(
             label: 'First Start',
-            value: DateFormat("d.M.yyyy H:mm").format(event.startFirst),
+            value: DateFormat("d.M.yyyy H:mm").format(event.startFirst!),
           ),
           Divider(),
           TTLabelValueField(
             label: 'Official Start',
-            value: DateFormat("d.M.yyyy H:mm").format(event.startOfficial),
+            value: DateFormat("d.M.yyyy H:mm").format(event.startOfficial!),
           ),
           Divider(),
           TTLabelValueField(
@@ -39,11 +39,11 @@ class TTEventInfo extends StatelessWidget {
           Divider(),
           TTLabelValueField(
             label: 'Last Start',
-            value: DateFormat("d.M.yyyy H:mm").format(event.startLast),
+            value: DateFormat("d.M.yyyy H:mm").format(event.startLast!),
           ),
           if (event.parts.length > 0) ...[
             Divider(),
-            TTLabelValueField(label: 'In use by', value: event.parts)
+            TTLabelValueField(label: 'Token in use by', value: event.parts)
           ],
         ],
       ),
@@ -52,7 +52,7 @@ class TTEventInfo extends StatelessWidget {
 }
 
 class TTLabelValueField extends StatelessWidget {
-  TTLabelValueField({Key key, @required this.label, @required this.value})
+  TTLabelValueField({Key? key, required this.label, required this.value})
       : super(key: key);
   final String label;
   final dynamic value;

@@ -33,7 +33,7 @@ class TTRegistry {
     return databaseFactoryIo.openDatabase(await _dbPath());
   }
 
-  Future<String> get(String key) async {
+  Future<String?> get(String key) async {
     var rec = registry.record(key);
     var dbh = await _db();
     var ret = await rec.get(dbh);

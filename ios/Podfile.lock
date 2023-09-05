@@ -1,30 +1,43 @@
 PODS:
-  - background_fetch (0.6.0):
+  - background_fetch (1.2.1):
     - Flutter
-  - CocoaLumberjack (3.6.1):
-    - CocoaLumberjack/Core (= 3.6.1)
-  - CocoaLumberjack/Core (3.6.1)
+  - CocoaLumberjack (3.7.4):
+    - CocoaLumberjack/Core (= 3.7.4)
+  - CocoaLumberjack/Core (3.7.4)
+  - device_info_plus (0.0.1):
+    - Flutter
   - Flutter (1.0.0)
-  - "flutter_background_geolocation (1.10.0+1)":
-    - CocoaLumberjack (~> 3.6.0)
+  - flutter_background_geolocation (4.12.2):
+    - CocoaLumberjack (~> 3.7.2)
+    - Flutter
+  - flutter_native_splash (0.0.1):
     - Flutter
   - move_to_background (0.0.1):
     - Flutter
-  - path_provider (0.0.1):
+  - package_info_plus (0.4.5):
     - Flutter
+  - path_provider_foundation (0.0.1):
+    - Flutter
+    - FlutterMacOS
   - pedometer (0.0.1):
     - Flutter
-  - "permission_handler (5.0.1+1)":
+  - permission_handler_apple (9.1.1):
+    - Flutter
+  - vibration (1.7.5):
     - Flutter
 
 DEPENDENCIES:
   - background_fetch (from `.symlinks/plugins/background_fetch/ios`)
+  - device_info_plus (from `.symlinks/plugins/device_info_plus/ios`)
   - Flutter (from `Flutter`)
   - flutter_background_geolocation (from `.symlinks/plugins/flutter_background_geolocation/ios`)
+  - flutter_native_splash (from `.symlinks/plugins/flutter_native_splash/ios`)
   - move_to_background (from `.symlinks/plugins/move_to_background/ios`)
-  - path_provider (from `.symlinks/plugins/path_provider/ios`)
+  - package_info_plus (from `.symlinks/plugins/package_info_plus/ios`)
+  - path_provider_foundation (from `.symlinks/plugins/path_provider_foundation/darwin`)
   - pedometer (from `.symlinks/plugins/pedometer/ios`)
-  - permission_handler (from `.symlinks/plugins/permission_handler/ios`)
+  - permission_handler_apple (from `.symlinks/plugins/permission_handler_apple/ios`)
+  - vibration (from `.symlinks/plugins/vibration/ios`)
 
 SPEC REPOS:
   trunk:
@@ -33,29 +46,41 @@ SPEC REPOS:
 EXTERNAL SOURCES:
   background_fetch:
     :path: ".symlinks/plugins/background_fetch/ios"
+  device_info_plus:
+    :path: ".symlinks/plugins/device_info_plus/ios"
   Flutter:
     :path: Flutter
   flutter_background_geolocation:
     :path: ".symlinks/plugins/flutter_background_geolocation/ios"
+  flutter_native_splash:
+    :path: ".symlinks/plugins/flutter_native_splash/ios"
   move_to_background:
     :path: ".symlinks/plugins/move_to_background/ios"
-  path_provider:
-    :path: ".symlinks/plugins/path_provider/ios"
+  package_info_plus:
+    :path: ".symlinks/plugins/package_info_plus/ios"
+  path_provider_foundation:
+    :path: ".symlinks/plugins/path_provider_foundation/darwin"
   pedometer:
     :path: ".symlinks/plugins/pedometer/ios"
-  permission_handler:
-    :path: ".symlinks/plugins/permission_handler/ios"
+  permission_handler_apple:
+    :path: ".symlinks/plugins/permission_handler_apple/ios"
+  vibration:
+    :path: ".symlinks/plugins/vibration/ios"
 
 SPEC CHECKSUMS:
-  background_fetch: 9221ccc02b41aff8a52b2090d9f791c5ed82eaee
-  CocoaLumberjack: b17ae15142558d08bbacf69775fa10c4abbebcc9
-  Flutter: 0e3d915762c693b495b44d77113d4970485de6ec
-  flutter_background_geolocation: 24e7a54403a9cabbcace22b8e4db152b747bb783
+  background_fetch: 896944864b038d2837fc750d470e9841e1e6a363
+  CocoaLumberjack: 543c79c114dadc3b1aba95641d8738b06b05b646
+  device_info_plus: 7545d84d8d1b896cb16a4ff98c19f07ec4b298ea
+  Flutter: f04841e97a9d0b0a8025694d0796dd46242b2854
+  flutter_background_geolocation: d7174636af3574b994b40e7b87c87a44279e29a6
+  flutter_native_splash: 52501b97d1c0a5f898d687f1646226c1f93c56ef
   move_to_background: 39a5b79b26d577b0372cbe8a8c55e7aa9fcd3a2d
-  path_provider: abfe2b5c733d04e238b0d8691db0cfd63a27a93c
-  pedometer: e27471953eabc0ceed97e4828c0bccf91d179d86
-  permission_handler: eac8e15b4a1a3fba55b761d19f3f4e6b005d15b6
+  package_info_plus: fd030dabf36271f146f1f3beacd48f564b0f17f7
+  path_provider_foundation: 29f094ae23ebbca9d3d0cec13889cd9060c0e943
+  pedometer: 381969883680ade42559782cc41a3bbd453d8234
+  permission_handler_apple: e76247795d700c14ea09e3a2d8855d41ee80a2e6
+  vibration: 7d883d141656a1c1a6d8d238616b2042a51a1241
 
-PODFILE CHECKSUM: 12a8d971b6ed391b13fc3dc52dcf315475559d19
+PODFILE CHECKSUM: 938c61414cd7e5934cc5de6a054db8201e818760
 
-COCOAPODS: 1.9.3
+COCOAPODS: 1.12.1

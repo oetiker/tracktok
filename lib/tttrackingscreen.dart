@@ -17,11 +17,11 @@ import 'ttevent.dart';
 
 class TTTrackingScreen extends StatefulWidget {
   const TTTrackingScreen({
-    Key key,
+    Key? key,
     this.event,
   }) : super(key: key);
 
-  final TTEvent event;
+  final TTEvent? event;
 
   @override
   _TrackingState createState() => _TrackingState();
@@ -29,20 +29,19 @@ class TTTrackingScreen extends StatefulWidget {
 
 class _TrackingState extends State<TTTrackingScreen>
     with WidgetsBindingObserver {
-  // final isolates = IsolateHandler();
   final uploader = TTUploader();
-  DateTime lastUpload;
+  DateTime lastUpload = DateTime.now().subtract(TTGlobal.uploadInterval);
   Map<String, dynamic> data = {};
   bool isReady = false;
-  bool trackerOn;
-  DateTime start;
+  bool? trackerOn;
+  DateTime? start;
 
   Duration get remaining {
-    return widget.event.duration - duration;
+    return widget.event!.duration - duration;
   }
 
   Duration get duration {
-    return now.difference(start);
+    return now.difference(start!);
   }
 
   DateTime get now {
@@ -57,7 +56,7 @@ class _TrackingState extends State<TTTrackingScreen>
     startTracker();
   }
 
-  Timer tickerTimer;
+  Timer? tickerTimer;
   Future startTracker() async {
     bg.BackgroundGeolocation.onLocation(onLocation, (bg.LocationError error) {
       print('[onLocation] ERROR: $error');
@@ -92,7 +91,7 @@ class _TrackingState extends State<TTTrackingScreen>
     WidgetsBinding.instance.removeObserver(this);
     stopTracker();
     if (tickerTimer != null) {
-      tickerTimer.cancel();
+      tickerTimer!.cancel();
     }
     super.dispose();
   }
@@ -112,7 +111,7 @@ class _TrackingState extends State<TTTrackingScreen>
   Future stopTracker() async {
     if (trackerOn == true) {
       if (tickerTimer != null) {
-        tickerTimer.cancel();
+        tickerTimer!.cancel();
         tickerTimer = null;
       }
       await bg.BackgroundGeolocation.removeListeners();
@@ -132,23 +131,20 @@ class _TrackingState extends State<TTTrackingScreen>
     }
     trackProcessing = true;
     try {
-      // print("Got Location $location");
       if (trackerOn == false) {
         print("Skipping location - trackerOff");
         trackProcessing = false;
         return;
       }
-      if (trackerOn == null) {
-        trackProcessing = false;
-        return;
-      }
 
-      var tpk = '-';
+      String tpk = '-';
       if (location.coords.speed > 0) {
         var sm = 1.0 / location.coords.speed / 60.0 * 1000.0;
         var smm = sm.floor();
         var sms = ((sm - smm) * 60.0).floor();
-        tpk = smm <= 99 ? "$smm'$sms" + '" km' : null;
+        if (smm <= 99) {
+          tpk = "$smm'$sms" + '" km';
+        }
       }
       data = <String, dynamic>{
         'distance': location.odometer / 1000,
@@ -171,12 +167,12 @@ class _TrackingState extends State<TTTrackingScreen>
       };
 
       if (remaining.inMilliseconds <= 0) {
-        track['distance_m'] = (track['distance_m'] /
+        track['distance_m'] = (track['distance_m']! /
                 duration.inMilliseconds *
-                widget.event.duration.inMilliseconds)
+                widget.event!.duration.inMilliseconds)
             .floor();
         track['duration_s'] = duration.inSeconds;
-        uploader.push(widget.event, start, track);
+        uploader.push(widget.event!, start!, track);
         await stopTracker();
         data['remaining'] = DateTime.fromMillisecondsSinceEpoch(
           0,
@@ -187,10 +183,9 @@ class _TrackingState extends State<TTTrackingScreen>
         }
         return;
       }
-      if (lastUpload == null ||
-          now.difference(lastUpload) > TTGlobal.uploadInterval) {
+      if (now.difference(lastUpload) > TTGlobal.uploadInterval) {
         lastUpload = now;
-        uploader.push(widget.event, start, track);
+        uploader.push(widget.event!, start!, track);
       }
       if (mounted) {
         setState(() {});
@@ -202,8 +197,8 @@ class _TrackingState extends State<TTTrackingScreen>
     return;
   }
 
-  Future<bool> onStop(BuildContext context) async {
-    bool result = await showDialog(
+  Future<void> onStop(BuildContext context) async {
+    bool? result = await showDialog(
       context: context,
       builder: (context) {
         bool active = false;
@@ -225,7 +220,7 @@ class _TrackingState extends State<TTTrackingScreen>
                     text: TextSpan(
                       text: 'Do you want to stop tracking? Type ',
                       style: TextStyle(
-                        color: Theme.of(context).textTheme.bodyText1.color,
+                        color: Theme.of(context).textTheme.bodyLarge?.color,
                       ),
                       children: [
                         TextSpan(
@@ -250,7 +245,7 @@ class _TrackingState extends State<TTTrackingScreen>
               ),
               actions: <Widget>[
                 MaterialButton(
-                  color: Theme.of(context).accentColor,
+                  color: Theme.of(context).colorScheme.secondary,
                   onPressed: active
                       ? () {
                           Navigator.of(context, rootNavigator: true).pop(
@@ -275,11 +270,11 @@ class _TrackingState extends State<TTTrackingScreen>
     if (result == true) {
       await stopTracker();
     }
-    return result;
+    return;
   }
 
   String _bePrint(String format, String key) {
-    if (data == null || !data.containsKey(key) || data[key] == null) {
+    if (!data.containsKey(key) || data[key] == null) {
       return "";
     }
     return sprintf(format, [data[key]]);
@@ -300,7 +295,7 @@ class _TrackingState extends State<TTTrackingScreen>
       },
       child: Scaffold(
         appBar: AppBar(
-          title: Text(widget.event.name),
+          title: Text(widget.event!.name),
         ),
         floatingActionButton: FloatingActionButton.extended(
           materialTapTargetSize: MaterialTapTargetSize.padded,
@@ -313,7 +308,7 @@ class _TrackingState extends State<TTTrackingScreen>
             return;
           },
           backgroundColor: trackerOn == true
-              ? Theme.of(context).accentColor
+              ? Theme.of(context).colorScheme.secondary
               : Theme.of(context).primaryColor,
           label: Text(trackerOn == true ? 'Stop Tracking' : 'Close Tracker'),
         ),
@@ -326,15 +321,13 @@ class _TrackingState extends State<TTTrackingScreen>
               var width = constraints.constrainWidth() / 2;
               return Column(children: <Widget>[
                 Row(children: <Widget>[
-                  PropCard(
-                      width: width,
-                      title: "Remaining",
-                      value: data == null
-                          ? ""
-                          : data['remaining'] is DateTime
-                              ? '  ' +
-                                  DateFormat.Hms().format(data['remaining'])
-                              : data['remaining']),
+                  if (data['remaining'] != null)
+                    PropCard(
+                        width: width,
+                        title: "Remaining",
+                        value: data['remaining'] is DateTime
+                            ? '  ' + DateFormat.Hms().format(data['remaining'])
+                            : data['remaining']),
                   PropCard(
                       width: width,
                       title: "Distance",
@@ -346,11 +339,12 @@ class _TrackingState extends State<TTTrackingScreen>
                     title: "Altitude",
                     value: _bePrint("%.0f m", 'alt'),
                   ),
-                  PropCard(
-                    width: width,
-                    title: "Speed",
-                    value: data == null ? "" : data['tpk'],
-                  ),
+                  if (data['tpk'] != null)
+                    PropCard(
+                      width: width,
+                      title: "Speed",
+                      value: data['tpk'],
+                    ),
                 ]),
                 Row(children: <Widget>[
                   PropCard(
@@ -378,7 +372,7 @@ class _TrackingState extends State<TTTrackingScreen>
                           maxLines: 1,
                           style: TextStyle(
                             color: trackerOn == false
-                                ? Theme.of(context).accentColor
+                                ? Theme.of(context).colorScheme.secondary
                                 : Theme.of(context).hintColor,
                             fontSize: 60,
                             fontWeight: FontWeight.bold,
@@ -404,10 +398,10 @@ class PropCard extends StatelessWidget {
   static var valueGroup = AutoSizeGroup();
 
   PropCard({
-    Key key,
-    @required this.title,
-    @required this.value,
-    @required this.width,
+    Key? key,
+    required this.title,
+    required this.value,
+    required this.width,
   }) : super(key: key);
 
   final String title;
@@ -442,7 +436,7 @@ class PropCard extends StatelessWidget {
             alignment: Alignment.bottomRight,
             widthFactor: 0.9,
             child: AutoSizeText(
-              value == null || value == "" ? "—       " : value,
+              value == "" ? "—       " : value,
               group: valueGroup,
               textAlign: TextAlign.right,
               stepGranularity: 2,

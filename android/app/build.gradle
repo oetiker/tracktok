@@ -46,7 +46,7 @@ android {
 
     defaultConfig {
         applicationId "ch.o2h.tracktok"
-        minSdkVersion 18
+        minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName

@@ -1,19 +1,19 @@
 class TTEvent {
   final int id;
-  final DateTime startOfficial;
-  final DateTime startFirst;
-  final DateTime startLast;
+  final DateTime? startOfficial;
+  final DateTime? startFirst;
+  final DateTime? startLast;
   final Duration duration;
   final String name;
   final List<String> parts;
   TTEvent({
-    this.id,
-    this.duration,
+    required this.id,
+    required this.duration,
     this.startOfficial,
     this.startFirst,
     this.startLast,
-    this.name,
-    this.parts,
+    required this.name,
+    required this.parts,
   });
   factory TTEvent.fromJson(Map<String, dynamic> json) {
     return TTEvent(

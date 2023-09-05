@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:cryptography/cryptography.dart';
+import 'package:cryptography/helpers.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'ttregistry.dart';
@@ -14,9 +15,9 @@ class TTUploader {
   factory TTUploader() => _singleton;
   TTUploader._init(); // empty constructor
 
-  Map<String, Map<String, List<Map<String, int>>>> _trackCache;
+  Map<String, Map<String, List<Map<String, int>>>>? _trackCache;
 
-  Future<Map<String, Map<String, List<Map<String, int>>>>>
+  Future<Map<String, Map<String, List<Map<String, int>>>>?>
       get _trackStore async {
     if (_trackCache != null) {
       return _trackCache;
@@ -28,15 +29,15 @@ class TTUploader {
       try {
         var _tempCache = jsonDecode(cacheStr);
         _tempCache.forEach((eventId, startMap) {
-          _trackCache[eventId] = {};
+          _trackCache![eventId] = {};
           startMap.forEach((startTs, tracks) {
-            _trackCache[eventId][startTs] = [];
+            _trackCache![eventId]?[startTs] = [];
             tracks.forEach((track) {
               Map<String, int> nt = {};
               track.forEach((k, v) {
                 nt[k] = v;
               });
-              _trackCache[eventId][startTs].add(nt);
+              _trackCache![eventId]?[startTs]?.add(nt);
             });
           });
         });
@@ -47,11 +48,11 @@ class TTUploader {
     return _trackCache;
   }
 
-  Timer syncBackTimer;
+  Timer? syncBackTimer;
   stopSyncBack() {
     if (syncBackTimer != null) {
       print("Stopping Background Syncer");
-      syncBackTimer.cancel();
+      syncBackTimer?.cancel();
       syncBackTimer = null;
     }
   }
@@ -80,12 +81,12 @@ class TTUploader {
     List<Future<int>> tasks = [];
     var ts = await _trackStore;
     bool removedAny = false;
-    ts.forEach((eventId, startMap) {
+    ts!.forEach((eventId, startMap) {
       startMap.forEach((startTs, tracks) {
         tasks.add(_upload(int.parse(eventId), int.parse(startTs), tracks)
             .then((pending) {
           if (pending == 0) {
-            ts[eventId].remove(startTs);
+            ts[eventId]?.remove(startTs);
             removedAny = true;
           }
           return pending;
@@ -111,13 +112,13 @@ class TTUploader {
     var e = event.id.toString();
     var t = (startTs.millisecondsSinceEpoch / 1000).floor().toString();
 
-    if (ts[e] == null) {
+    if (ts![e] == null) {
       ts[e] = {};
     }
-    if (ts[e][t] == null) {
-      ts[e][t] = [];
+    if (ts[e]![t] == null) {
+      ts[e]![t] = [];
     }
-    ts[e][t].add(track);
+    ts[e]?[t]?.add(track);
     if ((await uploadTrackStore()) > 0) {
       print("storeing unsent tracks");
       // if (context != null) {
@@ -147,11 +148,11 @@ class TTUploader {
     }
     uploadInProgress[uipKey] = true;
     final keyPair = await _registration.keyPair;
-    final pubKey = keyPair.publicKey;
+    final pubKey = await keyPair.extractPublicKey() as SimplePublicKey;
     final client = http.Client();
-    final nonce = Nonce.randomBytes(8);
+    final nonce = randomBytes(8);
     var payload = pubKey.bytes +
-        nonce.bytes +
+        nonce +
         utf8.encode(eventId.toString()) +
         utf8.encode(startTs.toString());
 
@@ -162,20 +163,20 @@ class TTUploader {
       });
     });
     // print(payload.toString());
-    final signature = await ed25519.sign(
+    final signature = await Ed25519().sign(
       payload,
-      keyPair,
+      keyPair: keyPair,
     );
     // lets make sure there is only one instance uploading at a time
 
     try {
-      final uriResponse = await client.post(TTGlobal.server + '/REST/v1/track',
+      final uriResponse = await client.post(Uri.parse(TTGlobal.server + '/REST/v1/track'),
           headers: <String, String>{
             'Content-Type': 'application/json; charset=UTF-8',
           },
           body: jsonEncode({
             'pubKey': base64Encode(pubKey.bytes),
-            'nonce': base64Encode(nonce.bytes),
+            'nonce': base64Encode(nonce),
             'signature': base64Encode(signature.bytes),
             'event': eventId,
             'start_ts': startTs,
